@@ -1,10 +1,14 @@
 #!/bin/env perl
 
-use diagnostics;            # force verbose warning diagnostics
-use strict;                 # restrict unsafe constructs
+my $versnum = "1.1";
+
+## DEVELOPMENT ONLY:
+## use diagnostics;            # force verbose warning diagnostics
+## use strict;                 # restrict unsafe constructs
 
 use Getopt::Long;           # GetOptions
 use File::Basename;         # fileparse, basename, dirname
+use File::stat;             # ->mtime
 use Pod::Usage;             # pod2usage
 
 
@@ -17,8 +21,6 @@ use Pod::Usage;             # pod2usage
 my $all_commands = 0;
 my $comments = 0;
 my $outfile = "synopsys.vim";
-my $help = 0;
-my $verbose = 0;
 my @tool_list = ();
 
 my $run_date = localtime();
@@ -31,6 +33,8 @@ my %snps_tools = (
         "fm_shell" => 0,
 );
 
+# These are command names that we shall ignore, i.e. standard Tcl commands
+# which should be handled by the appropriate tcl.vim syntax file.
 my %ignore = (
         "SEQGEN" => 1,
         "Tcl" => 1,
@@ -121,6 +125,8 @@ my %ignore = (
         "lset" => 1,
         "lsort" => 1,
         "man" => 1,
+        "mathfunc" => 1,
+        "mathop" => 1,
         "memory" => 1,
         "msgcat" => 1,
         "my" => 1,
@@ -132,11 +138,13 @@ my %ignore = (
         "package" => 1,
         "parray" => 1,
         "pid" => 1,
+        "platform" => 1,
         "proc" => 1,
         "puts" => 1,
         "pwd" => 1,
         "re_syntax" => 1,
         "read" => 1,
+        "refchan" => 1,
         "regexp" => 1,
         "registry" => 1,
         "regsub" => 1,
@@ -162,11 +170,13 @@ my %ignore = (
         "tcl_test" => 1,
         "tcl_wordBreakAfter" => 1,
         "tcl_wordBreakBefore" => 1,
+        "tcltest" => 1,
         "tclvars" => 1,
         "tell" => 1,
         "then" => 1,
         "throw" => 1,
         "time" => 1,
+        "tm" => 1,
         "trace" => 1,
         "try" => 1,
         "unknown" => 1,
@@ -192,14 +202,26 @@ my %ignore = (
 #
 # ---------------------------------------------------------------------------
 
+my $show_help = 0;
+my $show_usage = 0;
+my $verbose = 0;
+my $versinfo = 0;
+my $vershow = 0;
+
 GetOptions( 'all'               => \$all_commands,
             'comments!'         => \$comments,
-            'help|?'            => \$help,
+            'help|?'            => \$show_help,
+            'usage'             => \$show_usage,
             'output=s'          => \$outfile,
             'tool=s'            => \@tool_list,
-            'verbose+'          => \$verbose ) or pod2usage(2);
-pod2usage(-verbose => 2) if ($help && $verbose);
-pod2usage(1) if $help;
+            'verbose+'          => \$verbose,
+            'V'                 => \$vershow,
+            'version'           => \$versinfo ) or pod2usage(2);
+print "$versnum\n" and exit 0 if $vershow;
+print "$0, Version $versnum (" . scalar(localtime(stat($0)->mtime)) . ")\n"
+        and exit 0 if $versinfo;
+pod2usage(-verbose => 2) if ($show_help || $show_usage && $verbose);
+pod2usage(1) if $show_usage;
 
 # When no tools given use "dc", "fm", and "pt".
 if (scalar(@tool_list) == 0) {
@@ -380,7 +402,7 @@ foreach my $name ( sort(keys(%man_files)) ) {
 #
 # ---------------------------------------------------------------------------
 
-print "Generating syntax file: synopsys.vim\n" if $verbose;
+print "Generating syntax file: $outfile\n" if $verbose;
 
 open(SYN, "> $outfile") or die "Can't open $outfile: $!, stopped";
 
@@ -427,7 +449,7 @@ print "- commands with arguments\n" if $verbose;
 my $code_count = 0;
 
 foreach my $opt_code ( sort(keys(%commands_with_args)) ) {
-    
+
     my $region = "snpsReg$code_count";
     my $group  = "snpsGrp$code_count";
     my $switch = "snpsSwt$code_count";
@@ -494,9 +516,9 @@ __END__
 
 =head1 NAME
 
-snpsMan2VimSyntax - create vim syntax files from man pages.
+snpsMan2VimSyntax - create vim syntax files from Synopsys man pages.
 
-=head1 SYNOPSYS
+=head1 SYNOPSIS
 
 snpsMan2VimSyntax [options]
 
@@ -506,9 +528,8 @@ snpsMan2VimSyntax [options]
         -help|-?            Shows this help message.
         -output name.vim    Define the output file (default synopsys.vim).
         -tool id            Will enable handling "<id>_shell" commands.
+        -usage              Shows the shorter help message.
         -verbose            Shows more progress or help messages.
-
-=head1 ARGUMENTS
 
 =head1 OPTIONS
 
@@ -540,10 +561,19 @@ The default name is "synopsys.vim".
 Adds <id>_shell to the list of tools to search.
 Use multiple times for multiple tools, see example below.
 
+=item B<-usage>
+
+Shows the shorter help message.
+
 =item B<-verbose>
 
 Shows progress messages or additional help texts.
 Use twice for even more progress messsages.
+
+=item B<-V> | B<-version>
+
+Shows the version number or the verbose version information for
+this script.
 
 =back
 
@@ -566,4 +596,3 @@ L<Vim.org/scripts|http://www.vim.org/scripts/script_search_results.php?keywords=
 Eric Roller
 
 =cut
-
