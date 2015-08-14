@@ -1,0 +1,569 @@
+#!/bin/env perl
+
+use diagnostics;            # force verbose warning diagnostics
+use strict;                 # restrict unsafe constructs
+
+use Getopt::Long;           # GetOptions
+use File::Basename;         # fileparse, basename, dirname
+use Pod::Usage;             # pod2usage
+
+
+
+# ---------------------------------------------------------------------------
+#   Defaults
+#
+# ---------------------------------------------------------------------------
+
+my $all_commands = 0;
+my $comments = 0;
+my $outfile = "synopsys.vim";
+my $help = 0;
+my $verbose = 0;
+my @tool_list = ();
+
+my $run_date = localtime();
+my $run_args = "$0 @ARGV";
+
+my %snps_tools = (
+        "dc_shell" => 0,    # New default is OFF
+        "icc_shell" => 0,
+        "pt_shell" => 0,
+        "fm_shell" => 0,
+);
+
+my %ignore = (
+        "SEQGEN" => 1,
+        "Tcl" => 1,
+        "after" => 1,
+        "alias" => 1,
+        "append" => 1,
+        "apply" => 1,
+        "array" => 1,
+        "auto_execok" => 1,
+        "auto_import" => 1,
+        "auto_load" => 1,
+        "auto_mkindex" => 1,
+        "auto_mkindex_old" => 1,
+        "auto_qualify" => 1,
+        "auto_reset" => 1,
+        "bgerror" => 1,
+        "binary" => 1,
+        "break" => 1,
+        "case" => 1,
+        "catch" => 1,
+        "cd" => 1,
+        "chan" => 1,
+        "change_selection" => 1,
+        "change_selection_too_many_objects" => 1,
+        "clock" => 1,
+        "close" => 1,
+        "collections" => 1,
+        "concat" => 1,
+        "continue" => 1,
+        "coroutine" => 1,
+        "dde" => 1,
+        "default" => 1,
+        "dict" => 1,
+        "else" => 1,
+        "elseif" => 1,
+        "encoding" => 1,
+        "eof" => 1,
+        "error" => 1,
+        "eval" => 1,
+        "exec" => 1,
+        "exit" => 1,
+        "expr" => 1,
+        "fblocked" => 1,
+        "fconfigure" => 1,
+        "fcopy" => 1,
+        "file" => 1,
+        "fileevent" => 1,
+        "filename" => 1,
+        "finally" => 1,
+        "flush" => 1,
+        "for" => 1,
+        "foreach" => 1,
+        "format" => 1,
+        "get_design" => 1,
+        "get_generated_clock" => 1,
+        "get_lib" => 1,
+        "get_lib_cell" => 1,
+        "get_lib_pin" => 1,
+        "get_net" => 1,
+        "get_path_group" => 1,
+        "get_pin" => 1,
+        "get_port" => 1,
+        "get_selection" => 1,
+        "gets" => 1,
+        "glob" => 1,
+        "global" => 1,
+        "history" => 1,
+        "http" => 1,
+        "if" => 1,
+        "incr" => 1,
+        "info" => 1,
+        "interp" => 1,
+        "join" => 1,
+        "lappend" => 1,
+        "lassign" => 1,
+        "library" => 1,
+        "lindex" => 1,
+        "linsert" => 1,
+        "list" => 1,
+        "llength" => 1,
+        "load" => 1,
+        "lrange" => 1,
+        "lrepeat" => 1,
+        "lreplace" => 1,
+        "lreverse" => 1,
+        "ls" => 1,
+        "lsearch" => 1,
+        "lset" => 1,
+        "lsort" => 1,
+        "man" => 1,
+        "memory" => 1,
+        "msgcat" => 1,
+        "my" => 1,
+        "namespace" => 1,
+        "oo::copy" => 1,
+        "oo::define" => 1,
+        "oo::objdefine" => 1,
+        "open" => 1,
+        "package" => 1,
+        "parray" => 1,
+        "pid" => 1,
+        "proc" => 1,
+        "puts" => 1,
+        "pwd" => 1,
+        "re_syntax" => 1,
+        "read" => 1,
+        "regexp" => 1,
+        "registry" => 1,
+        "regsub" => 1,
+        "rename" => 1,
+        "return" => 1,
+        "safe" => 1,
+        "scan" => 1,
+        "seek" => 1,
+        "self" => 1,
+        "send" => 1,
+        "set" => 1,
+        "socket" => 1,
+        "source" => 1,
+        "split" => 1,
+        "string" => 1,
+        "subst" => 1,
+        "switch" => 1,
+        "tailcall" => 1,
+        "tcl_endOfWord" => 1,
+        "tcl_findLibrary" => 1,
+        "tcl_startOfNextWord" => 1,
+        "tcl_startOfPreviousWord" => 1,
+        "tcl_test" => 1,
+        "tcl_wordBreakAfter" => 1,
+        "tcl_wordBreakBefore" => 1,
+        "tclvars" => 1,
+        "tell" => 1,
+        "then" => 1,
+        "throw" => 1,
+        "time" => 1,
+        "trace" => 1,
+        "try" => 1,
+        "unknown" => 1,
+        "unload" => 1,
+        "unset" => 1,
+        "update" => 1,
+        "uplevel" => 1,
+        "upvar" => 1,
+        "variable" => 1,
+        "vwait" => 1,
+        "while" => 1,
+        "win_select_objects" => 1,
+        "win_set_filter" => 1,
+        "win_set_select_class" => 1,
+        "win_snap_point" => 1,
+        "window_stretch" => 1,
+        "yield" => 1,
+);
+
+
+# ---------------------------------------------------------------------------
+#   Process command-line options
+#
+# ---------------------------------------------------------------------------
+
+GetOptions( 'all'               => \$all_commands,
+            'comments!'         => \$comments,
+            'help|?'            => \$help,
+            'output=s'          => \$outfile,
+            'tool=s'            => \@tool_list,
+            'verbose+'          => \$verbose ) or pod2usage(2);
+pod2usage(-verbose => 2) if ($help && $verbose);
+pod2usage(1) if $help;
+
+# When no tools given use "dc", "fm", and "pt".
+if (scalar(@tool_list) == 0) {
+    @tool_list = ( "dc", "fm", "pt" );
+}
+
+# Compose the executable names from the tool ids: dc -> dc_shell.
+foreach my $id ( @tool_list ) {
+    print "Enabling tool: ${id}_shell\n" if $verbose;
+    $snps_tools{"${id}_shell"} = 1;
+}
+
+
+# ---------------------------------------------------------------------------
+#   Find the man pages
+#
+# ---------------------------------------------------------------------------
+
+print "Searching for man paths: " if $verbose;
+print "\n" if $verbose > 1;
+
+my @man_paths = ();
+
+TOOL:
+foreach my $tool ( keys(%snps_tools) ) {
+
+    # Ignore disabled tools.
+    next TOOL unless $snps_tools{"$tool"};
+
+    # Get the executable file name for the tool.
+    my $path = qx/which $tool/;
+    chomp $path;
+
+    die "Executable for $tool not found\n" unless -x $path;
+
+    # Find the paths to the man pages.
+    $path =~ s|bin/$tool|doc/*/man|;
+    foreach my $dir ( glob("$path") ) {
+        push (@man_paths, $dir);
+        print "- $dir\n" if $verbose > 1;
+    }
+}
+
+print scalar(@man_paths) . "\n" if $verbose == 1;
+print "Number of paths: " . scalar(@man_paths) . "\n" if $verbose > 1;
+
+die "No man paths found\n" if (scalar(@man_paths) == 0);
+
+
+# ---------------------------------------------------------------------------
+#   Collect the command names
+#
+# ---------------------------------------------------------------------------
+
+print "Searching for commands: " if $verbose;
+print "\n" if $verbose > 1;
+
+my %man_files = ();
+
+# Within all the tool's man directories...
+foreach my $dir ( @man_paths ) {
+
+    # Look up the cat2 files.
+    PAGE:
+    foreach my $file ( glob("$dir/cat2/*.2") ) {
+
+        # Get the command name from the file name.
+        my $name = basename($file, ".2");
+
+        unless ($all_commands) {
+            # Ignore selected Tcl commands or duplicates.
+            next PAGE if defined($ignore{"$name"});
+
+            # Ignore GUI commands
+            next PAGE if ($name =~ m/^gui_/);
+        }
+
+        # Store in a hash table: command name => file names;
+        if (defined($man_files{"$name"})) {
+            $man_files{"$name"} .= ":$file";
+        } else {
+            $man_files{"$name"} = "$file";
+            print "- $name\n" if $verbose > 1;
+        }
+    }
+}
+
+print scalar(keys(%man_files)) . "\n" if $verbose == 1;
+print "Number of man_files: " . scalar(keys(%man_files)) . "\n" if $verbose > 1;
+
+die "No commands found\n" if (scalar(keys(%man_files)) == 0);
+
+
+# ---------------------------------------------------------------------------
+#   Reading the Manuals
+#
+# ---------------------------------------------------------------------------
+
+print "Parsing man pages:\n" if $verbose;
+
+my @simple_commands = ();
+my %commands_with_args = ();
+
+PARSE:
+foreach my $name ( sort(keys(%man_files)) ) {
+
+    print "+ $name\n" if $verbose;
+
+    my %options0 = ();
+    my %options1 = ();
+    my $opt_count = 0;
+
+    # A command may have multiple man pages for multiple tools.
+    foreach my $file ( split(/:/, $man_files{"$name"}) ) {
+
+        my $syntax = 0;
+        my $synopsis = "";
+
+        # Get the man page as a simple text file:
+        LINE:
+        foreach my $line ( split(/\n/, qx/nroff $file | col -b/) ) {
+
+            # Wait for the line labelled "SYNTAX".
+            if ($syntax) {
+
+                # Stop at the next "SECTION HEADER".
+                last LINE if $line =~ m/^[A-Z]+/;
+
+                # Concatenate the command and options.
+                $synopsis .= " $line";
+
+            } elsif ($line =~ m/^SYNTAX/) {
+
+                # Start the SYNTAX processing.
+                $syntax++;
+            }
+        }
+
+        $synopsis =~ s/\s\s+/ /g;       # remove unnecessary whitespace.
+
+        # Detect the "-options with_arguments" or "-type { a | b }".
+        while ($synopsis =~ s/(-\w+)\s(\{|\w+)//) {
+            $options1{"$1"} = 1;
+            $opt_count++;
+        }
+
+        # Detect the "-single_options".
+        while ($synopsis =~ s/(-\w+)//) {
+            $options0{"$1"} = 1;
+            $opt_count++;
+        }
+    }
+
+    if ($opt_count) {
+
+        # To be able to detect commands with the same options, we compile them
+        # into a coded string like "-name -type // -quiet -strict".
+        my $opt_code = join(" ",sort(keys(%options1))) . " // " . join(" ",sort(keys(%options0)));
+
+        # Detecting commands with idential arguments is achieved simply
+        # by creating another hash table: opt_code => commands.
+        if (defined($commands_with_args{"$opt_code"})) {
+            $commands_with_args{"$opt_code"} .= " $name";
+        } else {
+            $commands_with_args{"$opt_code"} = $name;
+        }
+
+    } else {
+
+        # No options for this command.
+        push(@simple_commands, $name);
+    }
+}
+
+
+# ---------------------------------------------------------------------------
+#   Composing Syntax Commands
+#
+# ---------------------------------------------------------------------------
+
+print "Generating syntax file: synopsys.vim\n" if $verbose;
+
+open(SYN, "> $outfile") or die "Can't open $outfile: $!, stopped";
+
+print "- header\n" if $verbose;
+
+print SYN <<HEADER;
+" Vim syntax file
+" Language      TCL/TK with Synopsys keywords
+"
+" Autogenerated $run_date
+" by $run_args
+
+set iskeyword=@,48-57,_,192-255,-
+
+HEADER
+
+# ---------------------------------------------------------------------------
+# Commands without arguments
+# ---------------------------------------------------------------------------
+
+print "- simple commands\n" if $verbose;
+
+foreach my $name ( sort(@simple_commands) ) {
+
+    if ($comments) {
+        # Preceed the syntax definition with a comment of the source files.
+        foreach my $file ( split(/:/, $man_files{"$name"}) ) {
+            print SYN "\" $file\n";
+        }
+    }
+
+    # Simple commands have a single-line syntax declaration.
+    print SYN "syn keyword snpsCmd $name\n";
+}
+
+print SYN "\n";
+
+# ---------------------------------------------------------------------------
+# Commands with arguments.
+# ---------------------------------------------------------------------------
+
+print "- commands with arguments\n" if $verbose;
+
+my $code_count = 0;
+
+foreach my $opt_code ( sort(keys(%commands_with_args)) ) {
+    
+    my $region = "snpsReg$code_count";
+    my $group  = "snpsGrp$code_count";
+    my $switch = "snpsSwt$code_count";
+
+    my ($double_opts, $single_opts) = split(/ \/\/ /, $opt_code);
+
+    if ($comments) {
+        # Preceed the syntax definition with a comment of the source files.
+        foreach my $name ( split(/ /,$commands_with_args{"$opt_code"}) ) {
+            foreach my $file ( split(/:/, $man_files{"$name"}) ) {
+                print SYN "\" $file\n";
+            }
+        }
+    }
+
+    # Complex commands require region declarations.
+    print SYN "syn keyword snpsCmd contained " . $commands_with_args{"$opt_code"} . " skipwhite nextgroup=$region\n";
+    print SYN "syn region $region contained excludenl keepend start=+.+ skip=+\\\\\$+ end=+\}\\|]\\|;\\|\$+ contains=$group,\@tclStuff\n";
+
+    if ($single_opts ne "") {
+        print SYN "syn match $group contained \"-\\a\\+\" contains=$switch\n";
+        print SYN "syn keyword $switch contained $single_opts\n";
+    }
+
+    if ($double_opts ne "") {
+        print SYN "syn match $group contained \"-\\a\\+\" contains=$switch\n";
+        print SYN "syn keyword $switch contained $double_opts\n";
+    }
+
+    print SYN "\n";
+
+    $code_count++;
+}
+
+print SYN "\n";
+
+# ---------------------------------------------------------------------------
+# Highlighting
+# ---------------------------------------------------------------------------
+print "- footer\n" if $verbose;
+
+my $switch_count = 0;
+while ($switch_count < $code_count) {
+    my $switch = "snpsSwt$switch_count";
+    print SYN "hi def link $switch tclOption\n";
+    $switch_count++;
+}
+
+print SYN <<FOOTER;
+
+hi def link snpsCmd         Statement
+FOOTER
+
+close(SYN);
+
+
+
+# ---------------------------------------------------------------------------
+#   Embedded Usage
+#
+# ---------------------------------------------------------------------------
+
+__END__
+
+=head1 NAME
+
+snpsMan2VimSyntax - create vim syntax files from man pages.
+
+=head1 SYNOPSYS
+
+snpsMan2VimSyntax [options]
+
+    Options:
+        -all                Do not hide known duplicate/GUI commands.
+        -(no)comments       Adds man file page comments (default: off).
+        -help|-?            Shows this help message.
+        -output name.vim    Define the output file (default synopsys.vim).
+        -tool id            Will enable handling "<id>_shell" commands.
+        -verbose            Shows more progress or help messages.
+
+=head1 ARGUMENTS
+
+=head1 OPTIONS
+
+=over 8
+
+=item B<-all>
+
+With this option, syntax definitions are created for all commands.
+The default is to hide known Tcl duplicates and GUI commands.
+
+=item B<-comment> | B<-nocomment>
+
+Can be used to enable or disable the generation of comments in the
+output file. The default is off. When on, each syntax definition for
+a command will be preceeded with a comment that is listing the man
+source files upon which the definition was based.
+
+=item B<-help> | B<-?>
+
+Shows the help message or with B<-verbose> the entire manual page.
+
+=item B<-output> file
+
+Sets the name of the output file to generate.
+The default name is "synopsys.vim".
+
+=item B<-tool> id
+
+Adds <id>_shell to the list of tools to search.
+Use multiple times for multiple tools, see example below.
+
+=item B<-verbose>
+
+Shows progress messages or additional help texts.
+Use twice for even more progress messsages.
+
+=back
+
+=head1 DESCRIPTION
+
+B<snpsMan2VimSyntax> parses the manual pages for synopsys commands and creates
+VIM syntax files for the commands and their arguments.
+
+=head1 EXAMPLE
+
+snpsMan2VimSyntax -tool dc -tool icc -comments -out implementation.vim -verbose
+
+=head1 SEE ALSO
+
+L<Vim.org|http://www.vim.org/>
+L<Vim.org/scripts|http://www.vim.org/scripts/script_search_results.php?keywords=tcl&script_type=syntax&order_by=downloads&direction=descending&search=search>
+
+=head1 AUTHOR
+
+Eric Roller
+
+=cut
+
