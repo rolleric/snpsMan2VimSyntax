@@ -1,6 +1,6 @@
 #!/bin/env perl
 
-my $versnum = "1.1";
+my $versnum = "1.2";
 
 ## DEVELOPMENT ONLY:
 ## use diagnostics;            # force verbose warning diagnostics
@@ -19,6 +19,8 @@ use Pod::Usage;             # pod2usage
 # ---------------------------------------------------------------------------
 
 my $all_commands = 0;
+my $tcl_commands = 0;
+my $gui_commands = 0;
 my $comments = 0;
 my $outfile = "synopsys.vim";
 my @tool_list = ();
@@ -31,169 +33,6 @@ my %snps_tools = (
         "icc_shell" => 0,
         "pt_shell" => 0,
         "fm_shell" => 0,
-);
-
-# These are command names that we shall ignore, i.e. standard Tcl commands
-# which should be handled by the appropriate tcl.vim syntax file.
-my %ignore = (
-        "SEQGEN" => 1,
-        "Tcl" => 1,
-        "after" => 1,
-        "alias" => 1,
-        "append" => 1,
-        "apply" => 1,
-        "array" => 1,
-        "auto_execok" => 1,
-        "auto_import" => 1,
-        "auto_load" => 1,
-        "auto_mkindex" => 1,
-        "auto_mkindex_old" => 1,
-        "auto_qualify" => 1,
-        "auto_reset" => 1,
-        "bgerror" => 1,
-        "binary" => 1,
-        "break" => 1,
-        "case" => 1,
-        "catch" => 1,
-        "cd" => 1,
-        "chan" => 1,
-        "change_selection" => 1,
-        "change_selection_too_many_objects" => 1,
-        "clock" => 1,
-        "close" => 1,
-        "collections" => 1,
-        "concat" => 1,
-        "continue" => 1,
-        "coroutine" => 1,
-        "dde" => 1,
-        "default" => 1,
-        "dict" => 1,
-        "else" => 1,
-        "elseif" => 1,
-        "encoding" => 1,
-        "eof" => 1,
-        "error" => 1,
-        "eval" => 1,
-        "exec" => 1,
-        "exit" => 1,
-        "expr" => 1,
-        "fblocked" => 1,
-        "fconfigure" => 1,
-        "fcopy" => 1,
-        "file" => 1,
-        "fileevent" => 1,
-        "filename" => 1,
-        "finally" => 1,
-        "flush" => 1,
-        "for" => 1,
-        "foreach" => 1,
-        "format" => 1,
-        "get_design" => 1,
-        "get_generated_clock" => 1,
-        "get_lib" => 1,
-        "get_lib_cell" => 1,
-        "get_lib_pin" => 1,
-        "get_net" => 1,
-        "get_path_group" => 1,
-        "get_pin" => 1,
-        "get_port" => 1,
-        "get_selection" => 1,
-        "gets" => 1,
-        "glob" => 1,
-        "global" => 1,
-        "history" => 1,
-        "http" => 1,
-        "if" => 1,
-        "incr" => 1,
-        "info" => 1,
-        "interp" => 1,
-        "join" => 1,
-        "lappend" => 1,
-        "lassign" => 1,
-        "library" => 1,
-        "lindex" => 1,
-        "linsert" => 1,
-        "list" => 1,
-        "llength" => 1,
-        "load" => 1,
-        "lrange" => 1,
-        "lrepeat" => 1,
-        "lreplace" => 1,
-        "lreverse" => 1,
-        "ls" => 1,
-        "lsearch" => 1,
-        "lset" => 1,
-        "lsort" => 1,
-        "man" => 1,
-        "mathfunc" => 1,
-        "mathop" => 1,
-        "memory" => 1,
-        "msgcat" => 1,
-        "my" => 1,
-        "namespace" => 1,
-        "oo::copy" => 1,
-        "oo::define" => 1,
-        "oo::objdefine" => 1,
-        "open" => 1,
-        "package" => 1,
-        "parray" => 1,
-        "pid" => 1,
-        "platform" => 1,
-        "proc" => 1,
-        "puts" => 1,
-        "pwd" => 1,
-        "re_syntax" => 1,
-        "read" => 1,
-        "refchan" => 1,
-        "regexp" => 1,
-        "registry" => 1,
-        "regsub" => 1,
-        "rename" => 1,
-        "return" => 1,
-        "safe" => 1,
-        "scan" => 1,
-        "seek" => 1,
-        "self" => 1,
-        "send" => 1,
-        "set" => 1,
-        "socket" => 1,
-        "source" => 1,
-        "split" => 1,
-        "string" => 1,
-        "subst" => 1,
-        "switch" => 1,
-        "tailcall" => 1,
-        "tcl_endOfWord" => 1,
-        "tcl_findLibrary" => 1,
-        "tcl_startOfNextWord" => 1,
-        "tcl_startOfPreviousWord" => 1,
-        "tcl_test" => 1,
-        "tcl_wordBreakAfter" => 1,
-        "tcl_wordBreakBefore" => 1,
-        "tcltest" => 1,
-        "tclvars" => 1,
-        "tell" => 1,
-        "then" => 1,
-        "throw" => 1,
-        "time" => 1,
-        "tm" => 1,
-        "trace" => 1,
-        "try" => 1,
-        "unknown" => 1,
-        "unload" => 1,
-        "unset" => 1,
-        "update" => 1,
-        "uplevel" => 1,
-        "upvar" => 1,
-        "variable" => 1,
-        "vwait" => 1,
-        "while" => 1,
-        "win_select_objects" => 1,
-        "win_set_filter" => 1,
-        "win_set_select_class" => 1,
-        "win_snap_point" => 1,
-        "window_stretch" => 1,
-        "yield" => 1,
 );
 
 
@@ -210,9 +49,11 @@ my $vershow = 0;
 
 GetOptions( 'all'               => \$all_commands,
             'comments!'         => \$comments,
+            'gui!'              => \$gui_commands,
             'help|?'            => \$show_help,
             'usage'             => \$show_usage,
             'output=s'          => \$outfile,
+            'tcl!'              => \$tcl_commands,
             'tool=s'            => \@tool_list,
             'verbose+'          => \$verbose,
             'V'                 => \$vershow,
@@ -234,6 +75,9 @@ foreach my $id ( @tool_list ) {
     $snps_tools{"${id}_shell"} = 1;
 }
 
+# When all commands, use all commands.
+$tcl_commands = $gui_commands = 1 if $all_commands;
+
 
 # ---------------------------------------------------------------------------
 #   Find the man pages
@@ -251,7 +95,7 @@ foreach my $tool ( keys(%snps_tools) ) {
     # Ignore disabled tools.
     next TOOL unless $snps_tools{"$tool"};
 
-    # Get the executable file name for the tool.
+    # Get the path to the tool's executable file.
     my $path = qx/which $tool/;
     chomp $path;
 
@@ -259,7 +103,19 @@ foreach my $tool ( keys(%snps_tools) ) {
 
     # Find the paths to the man pages.
     $path =~ s|bin/$tool|doc/*/man|;
+    MAN:
     foreach my $dir ( glob("$path") ) {
+
+        unless ($gui_commands) {
+
+            # Optionally ignore the snps_gui/man pages as,
+            # ... well, who uses the GUI anyway?
+            if ($dir =~ m/snps_gui/) {
+                print "# $dir (IGNORED)\n" if $verbose > 1;
+                next MAN;
+            }
+        }
+
         push (@man_paths, $dir);
         print "- $dir\n" if $verbose > 1;
     }
@@ -269,6 +125,73 @@ print scalar(@man_paths) . "\n" if $verbose == 1;
 print "Number of paths: " . scalar(@man_paths) . "\n" if $verbose > 1;
 
 die "No man paths found\n" if (scalar(@man_paths) == 0);
+
+
+# ---------------------------------------------------------------------------
+#   Collect Tcl command names to ignore
+#
+# ---------------------------------------------------------------------------
+
+# These are command names that we shall ignore, i.e. standard Tcl commands
+# which should be handled by the appropriate tcl.vim syntax file.
+my %ignore_command = (
+        "SEQGEN" => 1,
+        "change_selection" => !$gui_commands,
+        "change_selection_no_core" => !$gui_commands,
+        "change_selection_too_many_objects" => !$gui_commands,
+        "collections" => 1,
+        "get_design" => 1,
+        "get_generated_clock" => 1,
+        "get_lib" => 1,
+        "get_lib_cell" => 1,
+        "get_lib_pin" => 1,
+        "get_net" => 1,
+        "get_path_group" => 1,
+        "get_pin" => 1,
+        "get_port" => 1,
+        "get_selection" => !$gui_commands,
+        "packagens" => 1,
+        "pkMkIndex" => 1,
+);
+
+# Don't ignore the gui commands if requested.
+foreach my $name ( keys(%ignore_command) ) {
+    delete $ignore_command{"$name"} unless $ignore_command{"$name"};
+}
+
+unless ($tcl_commands) {
+
+    print "Seaching for Tcl commands to igonore: " if $verbose;
+    print "\n" if $verbose > 1;
+
+    my $ignore_count = 0;
+
+    # Get the path for the Tcl shell.
+    my $path = qx/which tclsh/;
+    chomp $path;
+
+    die "tclsh not found\n" unless -x $path;
+
+    # Fins the path to the man pages.
+    $path =~ s|/bin/tclsh||;
+    foreach my $dir ( glob("$path/man $path/share/man") ) {
+        foreach my $file ( glob("$dir/mann/*.n $dir/mann/*.n.gz") ) {
+
+            # Get the command name from the file name.
+            my $name = basename($file, (".n", ".n.gz"));
+
+            # Add the name to the list of ignored commands.
+            $ignore_command{"$name"} = 1;
+            $ignore_count++;
+            print "- $name\n" if $verbose > 1;
+        }
+    }
+
+    print $ignore_count . "\n" if $verbose == 1;
+    print "Number of new ignored commands: " . $ignore_count . "\n" if $verbose > 1;
+
+    die "tclsh man pages not found; try 'man -w n file' to detect the mann path\n" unless $ignore_count;
+}
 
 
 # ---------------------------------------------------------------------------
@@ -292,11 +215,16 @@ foreach my $dir ( @man_paths ) {
         my $name = basename($file, ".2");
 
         unless ($all_commands) {
-            # Ignore selected Tcl commands or duplicates.
-            next PAGE if defined($ignore{"$name"});
+            # Ignore selected commands or known aliases.
+            if (defined($ignore_command{"$name"})) {
+                print "# $name (IGNORED)\n" if $verbose > 1;
+                next PAGE;
+            }
 
-            # Ignore GUI commands
-            next PAGE if ($name =~ m/^gui_/);
+            if (!$gui_commands && $name =~ m/^(gui|win)_/) {
+                print "# $name (IGNORED)\n" if $verbose > 1;
+                next PAGE;
+            }
         }
 
         # Store in a hash table: command name => file names;
@@ -535,17 +463,18 @@ snpsMan2VimSyntax [options]
 
 =over 8
 
-=item B<-all>
+=item B<-all> | B<-(no)tcl> | B<-(no)gui>
 
-With this option, syntax definitions are created for all commands.
-The default is to hide known Tcl duplicates and GUI commands.
+With the B<-all> option, syntax definitions are created for all commands.
+The default is to hide standard Tcl commands (B<-notcl>) and GUI commands
+(B<-nogui>).
 
-=item B<-comment> | B<-nocomment>
+=item B<-(no)comments>
 
-Can be used to enable or disable the generation of comments in the
-output file. The default is off. When on, each syntax definition for
-a command will be preceeded with a comment that is listing the man
-source files upon which the definition was based.
+Can be used to enable or disable the generation of comments in the output
+file. The default is off, i.e. B<-nocomments>. When on, each syntax
+definition for a command will be preceeded with a comment that is listing
+the man source files upon which the definition was based.
 
 =item B<-help> | B<-?>
 
