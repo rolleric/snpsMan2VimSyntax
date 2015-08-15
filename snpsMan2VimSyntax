@@ -1,6 +1,6 @@
 #!/bin/env perl
 
-my $versnum = "1.2";
+my $versnum = "1.2.1";
 
 ## DEVELOPMENT ONLY:
 ## use diagnostics;            # force verbose warning diagnostics
@@ -62,7 +62,7 @@ print "$versnum\n" and exit 0 if $vershow;
 print "$0, Version $versnum (" . scalar(localtime(stat($0)->mtime)) . ")\n"
         and exit 0 if $versinfo;
 pod2usage(-verbose => 2) if ($show_help || $show_usage && $verbose);
-pod2usage(1) if $show_usage;
+pod2usage(-verbose => 0) if $show_usage;
 
 # When no tools given use "dc", "fm", and "pt".
 if (scalar(@tool_list) == 0) {
@@ -456,7 +456,7 @@ snpsMan2VimSyntax [options]
         -help|-?            Shows this help message.
         -output name.vim    Define the output file (default synopsys.vim).
         -tool id            Will enable handling "<id>_shell" commands.
-        -usage              Shows the shorter help message.
+        -usage              Shows just the synopsis of the help message.
         -verbose            Shows more progress or help messages.
 
 =head1 OPTIONS
@@ -465,7 +465,7 @@ snpsMan2VimSyntax [options]
 
 =item B<-all> | B<-(no)tcl> | B<-(no)gui>
 
-With the B<-all> option, syntax definitions are created for all commands.
+With the B<-all> option, syntax definitions are generated for all commands.
 The default is to hide standard Tcl commands (B<-notcl>) and GUI commands
 (B<-nogui>).
 
@@ -482,22 +482,24 @@ Shows the help message or with B<-verbose> the entire manual page.
 
 =item B<-output> file
 
-Sets the name of the output file to generate.
-The default name is "synopsys.vim".
+Sets the name of the output file to generate. The default name is
+"synopsys.vim".
 
 =item B<-tool> id
 
-Adds <id>_shell to the list of tools to search.
-Use multiple times for multiple tools, see example below.
+Adds <id>_shell to the list of tools to search. You can use this option
+multiple times for multiple tools, see example below. Defaults to C<dc>,
+C<fm>, and C<pt>.
 
 =item B<-usage>
 
-Shows the shorter help message.
+Shows the usage information for this command, i.e. the just the SYNOPSIS
+section.
 
 =item B<-verbose>
 
-Shows progress messages or additional help texts.
-Use twice for even more progress messsages.
+Shows progress messages or additional help texts. Even more progress and
+debug messsages are produced if you use this option twice.
 
 =item B<-V> | B<-version>
 
@@ -508,8 +510,67 @@ this script.
 
 =head1 DESCRIPTION
 
-B<snpsMan2VimSyntax> parses the manual pages for synopsys commands and creates
-VIM syntax files for the commands and their arguments.
+B<snpsMan2VimSyntax> parses the manual pages for synopsys tool commands and
+generates VIM syntax files for the commands and their arguments.
+
+For each tool <id>, it looks up the installation path for a <id>_shell,
+and searches for the manual pages in the installation tree. Only man2
+pages, i.e. tool-internal commands are scanned. Each of the commands is
+parsed and a single VIM syntax definition file is generated.
+
+The generated syntax file has two sections. In the first section,
+simple commands (those without arguments) are listed as:
+
+    syn keyword snpsCmd command17
+
+In the second section we output syntax regions for commands with
+arguments:
+
+    syn keyword snpsCmd contained command42 skipwhite nextgroup=snpsReg42
+    syn region snpsReg42 contained excludenl keepend start=+.+ skip=+\\$+ end=+}\|]\|;\|$+ contains=snpsGrp293,@tclStuff
+    syn match snpsGrp42 contained "-\a\+" contains=snpsSw42
+    syn keyword snpsSwt42 contained -verbose
+    syn match snpsGrp42 contained "-\a\+" contains=snpsSwt42
+    syn keyword snpsSwt42 contained -output
+
+The color options assigned to the commands and options are:
+
+    hi def link snpsSwt42 tclOption
+    hi def link snpsCmd Statement
+
+NB. C<tclOption> and C<tclStuff> are defined in the default F<tcl.vim> syntax
+definition for Tcl (which should be loaded first before loading synopsys.vim).
+
+
+=head1 INSTALL
+
+Vim usually comes with F<tcl.vim> (1) pre-installed. If it were missing,
+or if you wanted to use a different version, you can add it to your local
+F<.vim> configuration directory:
+
+    ~/.vim/syntax/tcl.vim (2)
+
+To install the generated syntax file, place it here:
+
+    ~/.vim/syntax/synopsys.tcl (S)
+
+Next add an additional F<tcl.vim> that is read I<after> the standard Tcl
+syntax file:
+
+    ~/.vim/after/syntax/tcl.vim (A)
+
+Within that file, you can define your own syntax definitions. Add the
+following line to include the F<synopsys.vim> file:
+
+    " Add the synopsys.vim file to the Tcl syntax.
+    source ~/.vim/syntax/synopsys.vim
+
+Done.
+
+From now on, whenever you edit a Tcl source file in Vim with C<syntax=tcl>
+and C<syntax on>, Vim will read (1) or if present (2), then (A) which loads
+(S).
+
 
 =head1 EXAMPLE
 
