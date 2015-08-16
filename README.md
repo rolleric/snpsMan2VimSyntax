@@ -20,27 +20,28 @@ this Perl script will generate a single synopsys.vim syntax file for
 [Vim](http://www.vim.org), which can be used in combination with the standard
 Tcl syntax file, e.g. [tcl.vim](http://www.vim.org/scripts/script_search_results.php?keywords=tcl&script_type=syntax&order_by=rating&direction=descending&search=search).
 
-Only the script commands in the `cat2` category are parsed.
+Only the script commands in the `cat2` category are parsed. Syntax codes
+are generated for the command names as well as their options.
 
 Given that man pages follow familiar rules, this script may also be used for
-other Synopsys tools, but it has been tested only for the tools listed above.
+other Synopsys tools, but it has only been tested for the tools listed above.
 
 Other, pre-compiled .vim syntax files exist, but most are out-of-date. With
-`snpsMan2VimSyntax`, you can generate a syntax file that matches the tool(s)
-that are installed on your system.
+`snpsMan2VimSyntax`, you can generate a syntax file that exactly matches the
+tool(s) that are installed on your system.
 
 
 ## Using the Script
 
 You need the Synopsys tools installed on your system. Begin by adding their
-`$SYNOPSYS/bin` paths to your `$PATH`. This is necessary to be able to locate
-the executables, e.g. `dc_shell`, from which the man paths can be determined.
-Then run:
+`$SYNOPSYS/bin` paths to your `$PATH`. This is necessary such that the script
+can locate the executables, e.g. `dc_shell`, from which the man paths can be
+derived. Then run:
 
 	snpsMan2VimSyntax -verbose
 
 This will search for DC, FM, and PT to generate a `synopsys.vim` file.
-If you like, you can use only selected tools:
+If you like, you can use a selected subset of the tools:
 
 	snpsMan2VimSyntax -verbose -tool dc -tool pt
 
@@ -57,7 +58,7 @@ syntax definitions. To do this, place the file here:
 
 	~/.vim/syntax/synopsys.vim
 
-Next, create this file:
+Next, create this file add-on Tcl syntax definition file:
 
 	~/.vim/syntax/after/tcl.vim
 
@@ -65,7 +66,7 @@ and edit it to contain:
 
 ```tcl
 " Vim syntax file
-" NB. This file is loaded after the standard tcl.vim file.
+" This file is loaded AFTER the standard tcl.vim file.
 
 " Include the Synopsys commands.
 source ~/.vim/syntax/synopsys.vim

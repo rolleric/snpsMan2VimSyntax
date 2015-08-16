@@ -1,6 +1,6 @@
 #!/bin/env perl
 
-my $versnum = "1.2.1";
+my $versnum = "1.3";
 
 ## DEVELOPMENT ONLY:
 ## use diagnostics;            # force verbose warning diagnostics
@@ -23,6 +23,7 @@ my $tcl_commands = 0;
 my $gui_commands = 0;
 my $comments = 0;
 my $outfile = "synopsys.vim";
+my @man_paths = ();
 my @tool_list = ();
 
 my $run_date = localtime();
@@ -51,21 +52,26 @@ GetOptions( 'all'               => \$all_commands,
             'comments!'         => \$comments,
             'gui!'              => \$gui_commands,
             'help|?'            => \$show_help,
-            'usage'             => \$show_usage,
+            'manpath=s'         => \@man_paths,
             'output=s'          => \$outfile,
             'tcl!'              => \$tcl_commands,
             'tool=s'            => \@tool_list,
+            'usage'             => \$show_usage,
             'verbose+'          => \$verbose,
             'V'                 => \$vershow,
             'version'           => \$versinfo ) or pod2usage(2);
+
+# Output response to -V or --version.
 print "$versnum\n" and exit 0 if $vershow;
 print "$0, Version $versnum (" . scalar(localtime(stat($0)->mtime)) . ")\n"
         and exit 0 if $versinfo;
+
+# Output embedded podtext for --help or --usage.
 pod2usage(-verbose => 2) if ($show_help || $show_usage && $verbose);
 pod2usage(-verbose => 0) if $show_usage;
 
-# When no tools given use "dc", "fm", and "pt".
-if (scalar(@tool_list) == 0) {
+# When no --tools given use "dc", "fm", and "pt".
+if (!@tool_list && !@man_paths) {
     @tool_list = ( "dc", "fm", "pt" );
 }
 
@@ -74,8 +80,9 @@ foreach my $id ( @tool_list ) {
     print "Enabling tool: ${id}_shell\n" if $verbose;
     $snps_tools{"${id}_shell"} = 1;
 }
+undef $tool_list;
 
-# When all commands, use all commands.
+# When --all commands, use all commands.
 $tcl_commands = $gui_commands = 1 if $all_commands;
 
 
@@ -87,29 +94,32 @@ $tcl_commands = $gui_commands = 1 if $all_commands;
 print "Searching for man paths: " if $verbose;
 print "\n" if $verbose > 1;
 
-my @man_paths = ();
-
 TOOL:
+# foreach tool ( "dc_shell" "fm_shell" "pt_shell" )
 foreach my $tool ( keys(%snps_tools) ) {
 
     # Ignore disabled tools.
     next TOOL unless $snps_tools{"$tool"};
 
-    # Get the path to the tool's executable file.
+    # Get the path to the tool's executable file, e.g.
+    # path = "/var/tools/synopsys/dc-2015.06-SP1/bin/dc_shell"
     my $path = qx/which $tool/;
     chomp $path;
 
+    # If which failed, path would be "dc_shell: Command not found."
     die "Executable for $tool not found\n" unless -x $path;
 
-    # Find the paths to the man pages.
+    # Find the (glob pattern) paths to the man pages, e.g.
+    # path = "/var/tools/synopsys/dc-2015.06-SP1/doc/*/man"
     $path =~ s|bin/$tool|doc/*/man|;
+
     MAN:
+    # foreach dir ( ".../doc/{icc,snps_gui,snps_tcl,syn}/man" )
     foreach my $dir ( glob("$path") ) {
 
+        # Optionally ignore the snps_gui/man pages as,
+        # ... well, who uses the GUI anyway?
         unless ($gui_commands) {
-
-            # Optionally ignore the snps_gui/man pages as,
-            # ... well, who uses the GUI anyway?
             if ($dir =~ m/snps_gui/) {
                 print "# $dir (IGNORED)\n" if $verbose > 1;
                 next MAN;
@@ -124,7 +134,7 @@ foreach my $tool ( keys(%snps_tools) ) {
 print scalar(@man_paths) . "\n" if $verbose == 1;
 print "Number of paths: " . scalar(@man_paths) . "\n" if $verbose > 1;
 
-die "No man paths found\n" if (scalar(@man_paths) == 0);
+die "No man paths found\n" if (!@man_paths);
 
 
 # ---------------------------------------------------------------------------
@@ -204,14 +214,15 @@ print "\n" if $verbose > 1;
 
 my %man_files = ();
 
-# Within all the tool's man directories...
+# Within all the man directories...
 foreach my $dir ( @man_paths ) {
 
-    # Look up the cat2 files.
+    # Look up the .../man/cat2/* files.
     PAGE:
     foreach my $file ( glob("$dir/cat2/*.2") ) {
 
         # Get the command name from the file name.
+        # name = "write_file"
         my $name = basename($file, ".2");
 
         unless ($all_commands) {
@@ -221,13 +232,15 @@ foreach my $dir ( @man_paths ) {
                 next PAGE;
             }
 
+            # Optionally, ignore GUI-related commands.
             if (!$gui_commands && $name =~ m/^(gui|win)_/) {
                 print "# $name (IGNORED)\n" if $verbose > 1;
                 next PAGE;
             }
         }
 
-        # Store in a hash table: command name => file names;
+        # Store in a hash table: command name => colon-separated file names
+        # e.g man_files{"write_file"} = "path1/write_file.2:path2/write_file.2"
         if (defined($man_files{"$name"})) {
             $man_files{"$name"} .= ":$file";
         } else {
@@ -240,7 +253,7 @@ foreach my $dir ( @man_paths ) {
 print scalar(keys(%man_files)) . "\n" if $verbose == 1;
 print "Number of man_files: " . scalar(keys(%man_files)) . "\n" if $verbose > 1;
 
-die "No commands found\n" if (scalar(keys(%man_files)) == 0);
+die "No commands found\n" if (!keys(%man_files));
 
 
 # ---------------------------------------------------------------------------
@@ -254,6 +267,7 @@ my @simple_commands = ();
 my %commands_with_args = ();
 
 PARSE:
+# foreach name ( "read_verilog" "write_file" ... )
 foreach my $name ( sort(keys(%man_files)) ) {
 
     print "+ $name\n" if $verbose;
@@ -263,6 +277,7 @@ foreach my $name ( sort(keys(%man_files)) ) {
     my $opt_count = 0;
 
     # A command may have multiple man pages for multiple tools.
+    # foreach file ( "path1/write_file.2" "path2/write_file.2" )
     foreach my $file ( split(/:/, $man_files{"$name"}) ) {
 
         my $syntax = 0;
@@ -454,6 +469,7 @@ snpsMan2VimSyntax [options]
         -all                Do not hide known duplicate/GUI commands.
         -(no)comments       Adds man file page comments (default: off).
         -help|-?            Shows this help message.
+        -manpath /p/man     Defines the path of the man directory.
         -output name.vim    Define the output file (default synopsys.vim).
         -tool id            Will enable handling "<id>_shell" commands.
         -usage              Shows just the synopsis of the help message.
@@ -480,6 +496,12 @@ the man source files upon which the definition was based.
 
 Shows the help message or with B<-verbose> the entire manual page.
 
+=item B<-manpath>
+
+Use can this option (when the standard approch via B<-tool> fails) to
+specify the location of a F<man> path. For multiple paths, feel free to
+use this option multiple times.
+
 =item B<-output> file
 
 Sets the name of the output file to generate. The default name is
@@ -489,7 +511,7 @@ Sets the name of the output file to generate. The default name is
 
 Adds <id>_shell to the list of tools to search. You can use this option
 multiple times for multiple tools, see example below. Defaults to C<dc>,
-C<fm>, and C<pt>.
+C<fm>, and C<pt> (unless B<-manpath> was used).
 
 =item B<-usage>
 
@@ -575,6 +597,15 @@ and C<syntax on>, Vim will read (1) or if present (2), then (A) which loads
 =head1 EXAMPLE
 
 snpsMan2VimSyntax -tool dc -tool icc -comments -out implementation.vim -verbose
+
+=head1 REQUIREMENTS
+
+Obviously, the corresponding Synopsys tools need to be installed to be able
+to access their manual pages. B<nroff> is used to parse the pages, B<col> to
+ignore escaped colour codes. To be able to ignore standard Tcl commands, a
+stand-alone version of Tcl needs to be installed (the script searches for
+B<tclsh>).
+
 
 =head1 SEE ALSO
 
