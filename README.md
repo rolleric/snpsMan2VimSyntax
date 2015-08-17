@@ -40,10 +40,11 @@ derived. Then run:
 
 	snpsMan2VimSyntax -verbose
 
-This will search for DC, FM, and PT to generate a `synopsys.vim` file.
-If you like, you can use a selected subset of the tools:
+This will search for the install paths of DC, FM, and PT (which may well be
+installed in separate directories), locate the man pages, and generate a
+`synopsys.vim` file. If you like, you can use a selected subset of the tools:
 
-	snpsMan2VimSyntax -verbose -tool dc -tool pt
+	snpsMan2VimSyntax -verbose -tool dc -tool icc
 
 For help and additional options, use:
 
