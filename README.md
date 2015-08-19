@@ -38,17 +38,17 @@ You need the Synopsys tools installed on your system. Begin by adding their
 can locate the executables, e.g. `dc_shell`, from which the man paths can be
 derived. Then run:
 
-	snpsMan2VimSyntax -verbose
+	snpsMan2VimSyntax --verbose
 
 This will search for the install paths of DC, FM, and PT (which may well be
 installed in separate directories), locate the man pages, and generate a
 `synopsys.vim` file. If you like, you can use a selected subset of the tools:
 
-	snpsMan2VimSyntax -verbose -tool dc -tool icc
+	snpsMan2VimSyntax --verbose --tool dc --tool icc
 
 For help and additional options, use:
 
-	snpsMan2VimSyntax -help
+	snpsMan2VimSyntax --help
 
 
 ## Installing the Syntax File
@@ -78,6 +78,24 @@ source ~/.vim/syntax/synopsys.vim
 
 Now open one of your Tcl scripts in `vim` and make sure you use `:syntax on`
 and `:set syntax=tcl`.
+
+
+## Requirements
+
+* The Synopsys tools need to be installed.
+
+* The script uses `nroff` to parse the man pages
+  and `col` to remove colour codes.
+
+* To auto-detect standard Tcl commands, a stand-alone Tcl installation is
+  needed. To check, see if `tclsh` is available. Or try `man tclvars`.
+  If not installed, you can try using the `--tcl` options.
+
+* The syntax files have been tested with vim 7.3.
+
+* If you used and old version of the `tcl.vim` syntax files, i.e. those
+  written by SM Smithfield, use the `--old-tcl-vim` option to generate the
+  syntax definitions.
 
 
 ## License and Warranty
