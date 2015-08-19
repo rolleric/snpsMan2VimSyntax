@@ -203,7 +203,7 @@ unless ($tcl_commands) {
     print $ignore_count . "\n" if $verbose == 1;
     print "Number of new ignored commands: " . $ignore_count . "\n" if $verbose > 1;
 
-    die "tclsh man pages not found; try 'man -w n file' to detect the mann path\n" unless $ignore_count;
+    die "tclsh man pages not found; try 'man -w tclvars' to detect the mann path\n" unless $ignore_count;
 }
 
 
