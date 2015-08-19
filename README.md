@@ -18,7 +18,7 @@ tools installed on your system:
 
 this Perl script will generate a single synopsys.vim syntax file for
 [Vim](http://www.vim.org), which can be used in combination with the standard
-Tcl syntax file, e.g. [tcl.vim](http://www.vim.org/scripts/script_search_results.php?keywords=tcl&script_type=syntax&order_by=rating&direction=descending&search=search).
+Tcl syntax file, i.e. `tcl.vim`.
 
 Only the script commands in the `cat2` category are parsed. Syntax codes
 are generated for the command names as well as their options.
@@ -51,11 +51,25 @@ For help and additional options, use:
 	snpsMan2VimSyntax --help
 
 
+## tcl.vim Version Support
+
+Two distinct `tcl.vim` syntax definitions exist:
+
+*   The standard [`tcl.vim`](ftp://ftp.vim.org/pub/vim/runtime/syntax/tcl.vim)
+    file, maintained by Taylor Venable, which is pre-installed with vim-7.x;
+
+*   The optional [`tcl.vim` on www.vim.org](http://www.vim.org/scripts/script_search_results.php?keywords=tcl&script_type=syntax&order_by=downloads&direction=descending&search=search)
+    script, maintained by SM Smithfield. To support this version, please add
+    the `--old-tcl-vim` option:
+
+            snpsMan2VumSyntax --verbose --old-tcl-vim
+
+
 ## Installing the Syntax File
 
-The aim is not to replace the standard `tcl.vim` file that already exists
-on your system. Instead, the `synopsys.vim` file is used to extend the Tcl
-syntax definitions. To do this, place the file here:
+The aim is not to replace the `tcl.vim` file that already exists on your
+system. Instead, the `synopsys.vim` file is used to extend the Tcl syntax
+definitions. To do this, place the file here:
 
 	~/.vim/syntax/synopsys.vim
 
@@ -93,9 +107,9 @@ and `:set syntax=tcl`.
 
 * The syntax files have been tested with vim 7.3.
 
-* If you used and old version of the `tcl.vim` syntax files, i.e. those
-  written by SM Smithfield, use the `--old-tcl-vim` option to generate the
-  syntax definitions.
+* If you used the non-standard version of the `tcl.vim` syntax file, i.e.
+  one written by SM Smithfield (see its header), use the `--old-tcl-vim`
+  option to generate the syntax definitions.
 
 
 ## License and Warranty
