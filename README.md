@@ -18,9 +18,9 @@ tools installed on your system:
 
 this Perl script will generate a single synopsys.vim syntax file for
 [Vim](http://www.vim.org), which can be used in combination with the standard
-Tcl syntax file, i.e. `tcl.vim`.
+Tcl syntax file, i.e. tcl.vim.
 
-Only the script commands in the `cat2` category are parsed. Syntax codes
+Only the script commands in the 'cat2' category are parsed. Syntax codes
 are generated for the command names as well as their options.
 
 Given that man pages follow familiar rules, this script may also be used for
@@ -34,7 +34,7 @@ tool(s) that are installed on your system.
 ## Using the Script
 
 You need the Synopsys tools installed on your system. Begin by adding their
-`$SYNOPSYS/bin` paths to your `$PATH`. This is necessary such that the script
+`$SYNOPSYS/bin` paths to your $PATH. This is necessary such that the script
 can locate the executables, e.g. `dc_shell`, from which the man paths can be
 derived. Then run:
 
@@ -42,7 +42,7 @@ derived. Then run:
 
 This will search for the install paths of DC, FM, and PT (which may well be
 installed in separate directories), locate the man pages, and generate a
-`synopsys.vim` file. If you like, you can use a selected subset of the tools:
+synopsys.vim file. If you like, you can use a selected subset of the tools:
 
 	snpsMan2VimSyntax --verbose --tool dc --tool icc
 
@@ -53,22 +53,22 @@ For help and additional options, use:
 
 ## tcl.vim Version Support
 
-Two distinct `tcl.vim` syntax definitions exist:
+Two distinct tcl.vim syntax definitions exist:
 
-*   The standard [`tcl.vim`](ftp://ftp.vim.org/pub/vim/runtime/syntax/tcl.vim)
+*   The standard [tcl.vim](ftp://ftp.vim.org/pub/vim/runtime/syntax/tcl.vim)
     file, maintained by Taylor Venable, which is pre-installed with vim-7.x;
 
-*   The optional [`tcl.vim` on www.vim.org](http://www.vim.org/scripts/script_search_results.php?keywords=tcl&script_type=syntax&order_by=downloads&direction=descending&search=search)
+*   The optional [tcl.vim on www.vim.org](http://www.vim.org/scripts/script_search_results.php?keywords=tcl&script_type=syntax&order_by=downloads&direction=descending&search=search)
     script, maintained by SM Smithfield. To support this version, please add
-    the `--old-tcl-vim` option:
+    the --old-tcl-vim option:
 
             snpsMan2VumSyntax --verbose --old-tcl-vim
 
 
 ## Installing the Syntax File
 
-The aim is not to replace the `tcl.vim` file that already exists on your
-system. Instead, the `synopsys.vim` file is used to extend the Tcl syntax
+The aim is not to replace the tcl.vim file that already exists on your
+system. Instead, the synopsys.vim file is used to extend the Tcl syntax
 definitions. To do this, place the file here:
 
 	~/.vim/syntax/synopsys.vim
@@ -103,12 +103,12 @@ and `:set syntax=tcl`.
 
 * To auto-detect standard Tcl commands, a stand-alone Tcl installation is
   needed. To check, see if `tclsh` is available. Or try `man tclvars`.
-  If not installed, you can try using the `--tcl` options.
+  If not installed, you can try using the --tcl options.
 
 * The syntax files have been tested with vim 7.3.
 
-* If you used the non-standard version of the `tcl.vim` syntax file, i.e.
-  one written by SM Smithfield (see its header), use the `--old-tcl-vim`
+* If you used the non-standard version of the tcl.vim syntax file, i.e.
+  one written by SM Smithfield (see its header), use the --old-tcl-vim
   option to generate the syntax definitions.
 
 
