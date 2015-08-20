@@ -20,21 +20,21 @@ this Perl script will generate a single synopsys.vim syntax file for
 [Vim](http://www.vim.org), which can be used in combination with the standard
 Tcl syntax file, i.e. tcl.vim.
 
-Only the script commands in the 'cat2' category are parsed. Syntax codes
-are generated for the command names as well as their options.
+Only the script commands in the preformatted 'cat2' category are parsed. Syntax
+codes are generated for the command names as well as their options.
 
 Given that man pages follow familiar rules, this script may also be used for
 other Synopsys tools, but it has only been tested for the tools listed above.
 
 Other, pre-compiled .vim syntax files exist, but most are out-of-date. With
-`snpsMan2VimSyntax`, you can generate a syntax file that exactly matches the
+snpsMan2VimSyntax, you can generate a syntax file that _exactly_ matches the
 tool(s) that are installed on your system.
 
 
 ## Using the Script
 
 You need the Synopsys tools installed on your system. Begin by adding their
-`$SYNOPSYS/bin` paths to your $PATH. This is necessary such that the script
+$SYNOPSYS/bin paths to your $PATH. This is necessary such that the script
 can locate the executables, e.g. `dc_shell`, from which the man paths can be
 derived. Then run:
 
@@ -62,7 +62,7 @@ Two distinct tcl.vim syntax definitions exist:
     script, maintained by SM Smithfield. To support this version, please add
     the --old-tcl-vim option:
 
-            snpsMan2VumSyntax --verbose --old-tcl-vim
+            snpsMan2VimSyntax --verbose --old-tcl-vim
 
 
 ## Installing the Syntax File
@@ -73,7 +73,7 @@ definitions. To do this, place the file here:
 
 	~/.vim/syntax/synopsys.vim
 
-Next, create this file add-on Tcl syntax definition file:
+Next, create this add-on Tcl syntax definition file:
 
 	~/.vim/syntax/after/tcl.vim
 
@@ -103,7 +103,7 @@ and `:set syntax=tcl`.
 
 * To auto-detect standard Tcl commands, a stand-alone Tcl installation is
   needed. To check, see if `tclsh` is available. Or try `man tclvars`.
-  If not installed, you can try using the --tcl options.
+  If not installed, you can run snpsMan2VimSyntax with the --tcl option.
 
 * The syntax files have been tested with vim 7.3.
 
