@@ -1,6 +1,6 @@
-#!/bin/env perl
+#!/usr/bin/env perl
 
-my $versnum = "1.3.1";
+my $versnum = "1.4";
 
 ## DEVELOPMENT ONLY:
 ## use diagnostics;            # force verbose warning diagnostics
@@ -22,6 +22,7 @@ my $all_commands = 0;
 my $tcl_commands = 0;
 my $gui_commands = 0;
 my $comments = 0;
+my $old_tcl_vim = 0;
 my $outfile = "synopsys.vim";
 my @man_paths = ();
 my @tool_list = ();
@@ -53,6 +54,7 @@ GetOptions( 'all'               => \$all_commands,
             'gui!'              => \$gui_commands,
             'help|?'            => \$show_help,
             'manpath=s'         => \@man_paths,
+            'old-tcl-vim'       => \$old_tcl_vim,
             'output=s'          => \$outfile,
             'tcl!'              => \$tcl_commands,
             'tool=s'            => \@tool_list,
@@ -153,6 +155,7 @@ my %ignore_command = (
         "change_selection_no_core" => !$gui_commands,
         "change_selection_too_many_objects" => !$gui_commands,
         "collections" => 1,
+        "get_cell" => 1,
         "get_design" => 1,
         "get_generated_clock" => 1,
         "get_lib" => 1,
@@ -370,6 +373,20 @@ set iskeyword=@,48-57,_,192-255,-
 
 HEADER
 
+if ($old_tcl_vim) {
+    print SYN <<OLD_VIM;
+" Beware: This script was designed to work with the old tcl.vim script
+"         (written by SM Smithfield), which is still available on vim.org.
+"         To work with the new tcl syntax definitions, re-run $us
+"         without the -old-tcl-vim option.
+
+OLD_VIM
+} else {
+    # Define the tclStff cluster similar to that in the old tcl.vim script.
+    print SYN "syn cluster tclStuff contains=tclLineContinue,tclNumber,tclVarRef,tclString,tcltkCommand,snpsXCmd\n\n";
+}
+
+
 # ---------------------------------------------------------------------------
 # Commands without arguments
 # ---------------------------------------------------------------------------
@@ -401,6 +418,8 @@ print "- commands with arguments\n" if $verbose;
 
 my %command_codes = ();
 my $footer_commands = "";
+
+$footer_commands = "hi def link snpsXCol Statement\n" unless $old_tcl_vim;
 
 # This may seem counter-intuitive, but the order of the following commands
 # is not based on the command names, but on their arguments (by which they
@@ -438,15 +457,25 @@ foreach my $opt_code ( sort(keys(%commands_with_args)) ) {
     $command_codes{"$code"} = 1;
 
     # Assemble the commands that we will add to the end.
-    $footer_commands .= "hi def link snpsSwt$code tclOption\n";
+    $footer_commands .= "hi def link snpsSwt$code Special\n";
 
     my $region = "snpsReg$code";        # "snpsRegSma"
     my $group  = "snpsGrp$code";        # "snpsGrpSma"
     my $switch = "snpsSwt$code";        # "snpsSwtSma"
 
     # Complex commands require region declarations.
-    print SYN "syn keyword snpsCmd contained " . $commands_with_args{"$opt_code"} . " skipwhite nextgroup=$region\n";
-    print SYN "syn region $region contained excludenl keepend start=+.+ skip=+\\\\\$+ end=+\}\\|]\\|;\\|\$+ contains=$group,\@tclStuff\n";
+    if ($old_tcl_vim) {
+        print SYN "syn keyword snpsCmd contained " . $commands_with_args{"$opt_code"} . " skipwhite nextgroup=$region\n";
+        print SYN "syn region $region contained excludenl keepend start=+.+";
+    } else {
+        if ($commands_with_args{"$opt_code"} =~ s/ /\\|/g) {
+            $commands_with_args{"$opt_code"} = "\\(" . $commands_with_args{"$opt_code"} . "\\)";
+        }
+        print SYN "syn region $region matchgroup=snpsXCol start=+\\<" . $commands_with_args{"$opt_code"} . "\\>+ matchgroup=NONE";
+    }
+
+    # Finish the syn region command line:
+    print SYN " skip=+\\\\\$+ end=+\}\\|]\\|;\\|\$+ contains=$group,\@tclStuff\n";
 
     my ($double_opts, $single_opts) = split(/ \/\/ /, $opt_code);
 
@@ -462,6 +491,8 @@ foreach my $opt_code ( sort(keys(%commands_with_args)) ) {
 
     print SYN "\n";
 }
+
+print SYN "syn region tclEmbeddedStatement start='\\[' end='\\]' contained contains=tclCommand,snpsCmd,tclNumber,tclLineContinue,tclString,tclVarRef,tclEmbeddedStatement\n" unless $old_tcl_vim;
 
 print SYN "\n";
 
@@ -497,64 +528,69 @@ snpsMan2VimSyntax - create vim syntax files from Synopsys man pages.
 snpsMan2VimSyntax [options]
 
     Options:
-        -all                Do not hide known duplicate/GUI commands.
-        -(no)comments       Adds man file page comments (default: off).
-        -help|-?            Shows this help message.
-        -manpath /p/man     Defines the path of the man directory.
-        -output name.vim    Define the output file (default synopsys.vim).
-        -tool id            Will enable handling "<id>_shell" commands.
-        -usage              Shows just the synopsis of the help message.
-        -verbose            Shows more progress or help messages.
+        --all        	    Do not hide known duplicate/GUI commands.
+        --(no)comments      Adds man file page comments (default: off).
+        --help|-?           Shows this help message.
+        --manpath /p/man    Defines the path of the man directory.
+        --output name.vim   Define the output file (default synopsys.vim).
+        --tool id           Will enable handling "<id>_shell" commands.
+        --usage             Shows just the synopsis of the help message.
+        --verbose           Shows more progress or help messages.
 
 =head1 OPTIONS
 
 =over 8
 
-=item B<-all> | B<-(no)tcl> | B<-(no)gui>
+=item B<--all> | B<--(no)tcl> | B<--(no)gui>
 
-With the B<-all> option, syntax definitions are generated for all commands.
-The default is to hide standard Tcl commands (B<-notcl>) and GUI commands
-(B<-nogui>).
+With the B<--all> option, syntax definitions are generated for all commands.
+The default is to hide standard Tcl commands (B<--notcl>) and GUI commands
+(B<--nogui>).
 
-=item B<-(no)comments>
+=item B<--(no)comments>
 
 Can be used to enable or disable the generation of comments in the output
-file. The default is off, i.e. B<-nocomments>. When on, each syntax
+file. The default is off, i.e. B<--nocomments>. When on, each syntax
 definition for a command will be preceeded with a comment that is listing
 the man source files upon which the definition was based.
 
-=item B<-help> | B<-?>
+=item B<--help> | B<-?>
 
-Shows the help message or with B<-verbose> the entire manual page.
+Shows the help message or with B<--verbose> the entire manual page.
 
-=item B<-manpath>
+=item B<--manpath>
 
-Use can this option (when the standard approch via B<-tool> fails) to
+Use can this option (when the standard approch via B<--tool> fails) to
 specify the location of a F<man> path. For multiple paths, feel free to
 use this option multiple times.
 
-=item B<-output> file
+=item B<--old-tcl-vim>
+
+Use this option if you are using the old F<tcl.vim> syntax definitions,
+i.e. those written by SM Smithfield.
+
+=item B<--output> file
 
 Sets the name of the output file to generate. The default name is
 "synopsys.vim".
 
-=item B<-tool> id
+=item B<--tool> id
 
 Adds <id>_shell to the list of tools to search. You can use this option
 multiple times for multiple tools, see example below. Defaults to C<dc>,
-C<fm>, and C<pt> (unless B<-manpath> was used).
+C<fm>, and C<pt> (unless B<--manpath> was used).
 
-=item B<-usage>
+=item B<--usage>
 
 Shows the usage information for this command, i.e. the just the SYNOPSIS
 section.
 
-=item B<-verbose>
+=item B<--verbose>
 
 Shows progress messages or additional help texts. Even more progress and
 debug messsages are produced if you use this option twice.
 
-=item B<-V> | B<-version>
+=item B<-V> | B<--version>
 
 Shows the version number or the verbose version information for
 this script.
@@ -574,25 +610,24 @@ parsed and a single VIM syntax definition file is generated.
 The generated syntax file has two sections. In the first section,
 simple commands (those without arguments) are listed as:
 
-    syn keyword snpsCmd command17
+    syn keyword snpsCmd example_set_command
 
 In the second section we output syntax regions for commands with
 arguments:
 
-    syn keyword snpsCmd contained command42 skipwhite nextgroup=snpsReg42
-    syn region snpsReg42 contained excludenl keepend start=+.+ skip=+\\$+ end=+}\|]\|;\|$+ contains=snpsGrp293,@tclStuff
-    syn match snpsGrp42 contained "-\a\+" contains=snpsSw42
-    syn keyword snpsSwt42 contained -verbose
-    syn match snpsGrp42 contained "-\a\+" contains=snpsSwt42
-    syn keyword snpsSwt42 contained -output
+    syn region snpsRegOv matchgroup=snpsCmd start=+\<example_write_command\>+ matchgroup=NONE skip=+\\$+ end=+}\|]\|;\|$+ contains=snpsGrpOv,@tclStuff
+    syn match snpsGrpOv contained "-\a\+" contains=snpsSwOv
+    syn keyword snpsSwtOv contained -verbose
+    syn match snpsGrpOv contained "-\a\+" contains=snpsSwtOv
+    syn keyword snpsSwtOv contained -output
 
 The color options assigned to the commands and options are:
 
-    hi def link snpsSwt42 tclOption
+    hi def link snpsSwtOv Special
     hi def link snpsCmd Statement
 
-NB. C<tclOption> and C<tclStuff> are defined in the default F<tcl.vim> syntax
-definition for Tcl (which should be loaded first before loading synopsys.vim).
+NB. See B<--old-tcl-vim> regarding C<tclStuff> if you are using an old version
+of the F<tcl.vim> syntax script.
 
 
 =head1 INSTALL
@@ -602,6 +637,9 @@ or if you wanted to use a different version, you can add it to your local
 F<.vim> configuration directory:
 
     ~/.vim/syntax/tcl.vim (2)
+
+NB. If the above were an old tcl.vim script (which defines \@tclStuff),
+you should add the B<--old-tcl-vim> option when you run snpsMan2VimSyntax.
 
 To install the generated syntax file, place it here:
 
@@ -627,7 +665,7 @@ and C<syntax on>, Vim will read (1) or if present (2), then (A) which loads
 
 =head1 EXAMPLE
 
-snpsMan2VimSyntax -tool dc -tool icc -comments -out implementation.vim -verbose
+snpsMan2VimSyntax --tool dc --tool icc --comments --out implementation.vim --verbose
 
 =head1 REQUIREMENTS
 
