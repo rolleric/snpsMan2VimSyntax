@@ -266,6 +266,50 @@ die "No commands found\n" if (!keys(%man_files));
 
 
 # ---------------------------------------------------------------------------
+#   Setup Abbreviations
+#
+# ---------------------------------------------------------------------------
+
+my %abbrev_options = (
+    "-application"          => "-app[lication]",
+    "-attribute"            => "-attr[ibute]",
+    "-attributes"           => "-attr[ibutes]",
+    "-attributes_only"      => "-attr[ibutes_only]",
+    "-crosstalk_delta"      => "-crosstalk[_delta]",
+    "-delay_type"           => "-delay[_type]",
+    "-dictionary"           => "-dict[ionary]",
+    "-hierarchical"         => "-hier[archical]",
+    "-hierarchy"            => "-hier[archy]",
+    "-incremental"          => "-incr[emental]",
+    "-input_pins"           => "-input[_pins]",
+    "-max_paths"            => "-max_path[s]",
+    "-of_objects"           => "-of[_objects]",
+    "-path_type"            => "-path[_type]",
+    "-significant_digits"   => "-sig[nificant_digits]",
+    "-temperature"          => "-temp[erature]",
+    "-transition_time"      => "-transition[_time]",
+    "-user_defined"         => "-user[_defined]",
+
+    # Forbidden abbreviations for these commands:
+    "create_qtm_delay_arc"      => 0,
+    "create_qtm_drive_type"     => 0,
+    "create_qtm_constraint_arc" => 0,
+    "create_qtm_load_type"      => 0,
+);
+
+sub abbrev_opt_name {
+    my ($cmd_name, $opt_name) = @_;
+
+    # No abbreviation if the command is on the no-can-do-list.
+    return $opt_name if defined($abbrev_options{"$cmd_name"});
+
+    # Where defined, try to abbreviate.
+    return $abbrev_options{"$opt_name"} if defined($abbrev_options{"$opt_name"});
+    return $opt_name;
+}
+
+
+# ---------------------------------------------------------------------------
 #   Reading the Manuals
 #
 # ---------------------------------------------------------------------------
@@ -355,20 +399,23 @@ foreach my $name ( sort(keys(%man_files)) ) {
         if ($old_tcl_vim) {
             # There must be only a single space inbetween:
             while ($synopsis =~ s/(-\w+) (\{|\w+)//) {
-                $double_opts{"$1"} = 1;
+                my $opt_name = &abbrev_opt_name($name,$1);
+                $double_opts{"$opt_name"} = 1;
                 $opt_count++;
             }
 
             # More spaces if enclosed in square braces: "[-a  b]"
             while ($synopsis =~ s/\[(-\w+) +(\w+)\]//) {
-                $double_opts{"$1"} = 1;
+                my $opt_name = &abbrev_opt_name($name,$1);
+                $double_opts{"$opt_name"} = 1;
                 $opt_count++;
             }
         }
 
             # Detect the "-single_options".
             while ($synopsis =~ s/(-\w+)//) {
-                $single_opts{"$1"} = 1;
+                my $opt_name = &abbrev_opt_name($name,$1);
+                $single_opts{"$opt_name"} = 1;
                 $opt_count++;
             }
     }
@@ -402,6 +449,8 @@ foreach my $name ( sort(keys(%man_files)) ) {
         push(@simple_commands, $name);
     }
 }
+
+undef %abbrev_options;
 
 
 # ---------------------------------------------------------------------------
