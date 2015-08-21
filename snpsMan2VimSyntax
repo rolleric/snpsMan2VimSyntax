@@ -281,57 +281,112 @@ foreach my $name ( sort(keys(%man_files)) ) {
 
     print "+ $name\n" if $verbose;
 
-    my %options0 = ();
-    my %options1 = ();
+    my %double_opts = ();  # $old_tcl_vim only
+    my %single_opts = ();
     my $opt_count = 0;
 
     # A command may have multiple man pages for multiple tools.
     # foreach file ( "path1/write_file.2" "path2/write_file.2" )
     foreach my $file ( split(/:/, $man_files{"$name"}) ) {
 
-        my $syntax = 0;
+        print "    $file\n" if $verbose > 1;
+
+        my $section = 0;
         my $synopsis = "";
 
         # Get the man page as a simple text file:
         LINE:
-        foreach my $line ( split(/\n/, qx/nroff $file | col -b/) ) {
+        foreach my $line ( split(/\n/, qx/man $file | col -bx/) ) {
 
-            # Wait for the line labelled "SYNTAX".
-            if ($syntax) {
+            if ($section == 1) {
+                # Parsing the "SYNTAX" section.
 
                 # Stop at the next "SECTION HEADER".
-                last LINE if $line =~ m/^[A-Z]+/;
+                last LINE if $line =~ m/^[A-Z]{3}/;
+
+                # Do not use the SYNTAX section if the command
+                # name is mentioned together with options like
+                # this: "string the_command -option a_list".
+                if ($old_tcl_vim && $line =~ m/\b$name\s+[-\w]+/) {
+                    $section++;
+                    $synopsis = "";
+                    next LINE;
+                }
 
                 # Concatenate the command and options.
-                $synopsis .= " $line";
+                # Note that we use two spaces to separate.
+                $synopsis .= "  $line";
 
-            } elsif ($line =~ m/^SYNTAX/) {
+            } elsif ($section == 3) {
+                # Parsing the "ARGUMENTS" section.
 
-                # Start the SYNTAX processing.
-                $syntax++;
+                # Stop at the next "SECTION HEADER".
+                last LINE if $line =~ m/^[A-Z]{3}/;
+
+                if ($line =~ m/^\s{6,8}-\w+/) {
+
+                    # The first work after the option must
+                    # not begin with an uppercase letter.
+                    # If it did, remove the trailing text.
+                    # "-all Specifies that ..." -> "-all"
+                    $line =~ s/^(\s+-\w+)\s+[A-Z].*/$1/;
+
+                    # Note that we use two spaces to separate.
+                    $synopsis .= "  $line\n";
+                }
+
+            } elsif ($section == 2) {
+                # Wait for the "ARGUMENTS" line.
+                $section++ if $line =~ m/^ARGUMENTS/;
+
+            } else {
+                # Wait for the "SYNTAX" line.
+                $section++ if $line =~ m/^SYNTAX/;
             }
         }
 
-        $synopsis =~ s/\s\s+/ /g;       # remove unnecessary whitespace.
+        if ($section == 1) {
+            # Fix hyphenations: "-quiet -applica- tion name"
+            # This fixes, for instance, "check_script -applica".
+            $synopsis =~ s/(\w+)- +(\w+)/$1$2/g;
+        }
 
         # Detect the "-options with_arguments" or "-type { a | b }".
-        while ($synopsis =~ s/(-\w+)\s(\{|\w+)//) {
-            $options1{"$1"} = 1;
-            $opt_count++;
+        if ($old_tcl_vim) {
+            # There must be only a single space inbetween:
+            while ($synopsis =~ s/(-\w+) (\{|\w+)//) {
+                $double_opts{"$1"} = 1;
+                $opt_count++;
+            }
+
+            # More spaces if enclosed in square braces: "[-a  b]"
+            while ($synopsis =~ s/\[(-\w+) +(\w+)\]//) {
+                $double_opts{"$1"} = 1;
+                $opt_count++;
+            }
         }
 
-        # Detect the "-single_options".
-        while ($synopsis =~ s/(-\w+)//) {
-            $options0{"$1"} = 1;
-            $opt_count++;
-        }
+            # Detect the "-single_options".
+            while ($synopsis =~ s/(-\w+)//) {
+                $single_opts{"$1"} = 1;
+                $opt_count++;
+            }
     }
 
     if ($opt_count) {
 
         # To be able to detect commands with the same options, we compile the
-        # options into a coded string like "-name -type // -quiet -strict".
-        my $opt_code = join(" ",sort(keys(%options1))) . " // " . join(" ",sort(keys(%options0)));
+        # options into a coded string like "-quiet -strict // -1995 -type".
+        my $opt_code = join(" ",sort(keys(%single_opts)));
+
+        if ($old_tcl_vim) {
+            # Avoid parsing errors where single options were also detected to
+            # have arguments. We can't have it both ways.
+            delete @double_opts{keys %single_opts};
+            delete @double_opts{keys %errors_opts};
+
+            $opt_code .= " // " . join(" ",sort(keys(%double_opts)));
+        }
 
         # Detecting commands with idential arguments is achieved simply
         # by creating another hash table: opt_code => commands.
@@ -378,12 +433,12 @@ if ($old_tcl_vim) {
 " Beware: This script was designed to work with the old tcl.vim script
 "         (written by SM Smithfield), which is still available on vim.org.
 "         To work with the new tcl syntax definitions, re-run $us
-"         without the -old-tcl-vim option.
+"         without the --old-tcl-vim option.
 
 OLD_VIM
 } else {
     # Define the tclStff cluster similar to that in the old tcl.vim script.
-    print SYN "syn cluster tclStuff contains=tclLineContinue,tclNumber,tclVarRef,tclString,tcltkCommand,snpsXCmd\n\n";
+    print SYN "syn cluster tclStuff contains=tclLineContinue,tclNumber,tclVarRef,tclString,tcltkCommand,tclCommand,snpxCmd,snpsCmd\n\n";
 }
 
 
@@ -392,6 +447,8 @@ OLD_VIM
 # ---------------------------------------------------------------------------
 
 print "- simple commands\n" if $verbose;
+
+my $command_type = $old_tcl_vim ? "snpsCmd" : "tclCommand";
 
 foreach my $name ( sort(@simple_commands) ) {
 
@@ -402,8 +459,11 @@ foreach my $name ( sort(@simple_commands) ) {
         }
     }
 
-    # Simple commands have a single-line syntax declaration.
-    print SYN "syn keyword snpsCmd $name\n";
+    # Simple commands have a single-line syntax declaration:
+    #
+    # syn keyword tclCommand current_design
+
+    print SYN "syn keyword $command_type $name\n";
 }
 
 undef @simple_commands;
@@ -419,7 +479,8 @@ print "- commands with arguments\n" if $verbose;
 my %command_codes = ();
 my $footer_commands = "";
 
-$footer_commands = "hi def link snpsXCol Statement\n" unless $old_tcl_vim;
+# We use a comand color match group, not a region, in the new tcl.vim.
+$footer_commands = "hi def link snpxCol Statement\n" unless $old_tcl_vim;
 
 # This may seem counter-intuitive, but the order of the following commands
 # is not based on the command names, but on their arguments (by which they
@@ -439,13 +500,14 @@ foreach my $opt_code ( sort(keys(%commands_with_args)) ) {
     # and will make it easier to diff the resulting synopsys.vim file.
 
     # Convert the list of (already sorted) options into a short code:
-    my $code = $opt_code;               # -> "-name -type // -quiet -strict"
-    $code =~ s/ \/\///;                 # -> "-name -type -quiet -strict"
-    $code =~ s/([a-z])\w+/$1/g;         # -> "-n -t -q -s"
-    $code =~ s/[- ]//g;                 # -> "ntqs"
-    $code =~ s/(.)(.{0,2}).*/\U$1\E$2/; # -> "Ntq"
+    my $code = $opt_code;               # -> "-quiet -str[ict] // -1995 -ty[pe]"
+    $code =~ s/ \/\///;                 # -> "-quiet -str[ict] -1995 -ty[pe]"
+    $code =~ s/\[\w+\]//g;              # -> "-quiet -str -1995 -ty"
+    $code =~ s/([a-z\d])\w+/$1/g;       # -> "-q -s -1 -t"
+    $code =~ s/[- ]//g;                 # -> "qs1t"
+    $code =~ s/(.)(.{0,2}).*/\U$1\E$2/; # -> "Qs1"
 
-    # If the code already exists, add a digit: "Ntq", "Ntq0", "Ntq1", ...
+    # If the code already exists, add a digit: "Qs1", "Qs10", "Qs11", ...
     my $code_base = $code;
     my $code_numr = 0;
     while (defined($command_codes{"$code"})) {
@@ -453,38 +515,58 @@ foreach my $opt_code ( sort(keys(%commands_with_args)) ) {
         $code_numr++;
     }
 
-    # Remember the new code.
+    # Remember the code to be able to detect clashes.
     $command_codes{"$code"} = 1;
 
-    # Assemble the commands that we will add to the end.
-    $footer_commands .= "hi def link snpsSwt$code Special\n";
-
-    my $region = "snpsReg$code";        # "snpsRegSma"
-    my $group  = "snpsGrp$code";        # "snpsGrpSma"
-    my $switch = "snpsSwt$code";        # "snpsSwtSma"
+    my $region = "snpxCmd";
+       $region = "snpsReg$code" if $old_tcl_vim;    # "snpsRegCel0"
+    my $group  = "snpsGrp$code";                    # "snpsGrpCel0"
+    my $switch = "snpsSwt$code";                    # "snpsSwtCel0"
 
     # Complex commands require region declarations.
     if ($old_tcl_vim) {
-        print SYN "syn keyword snpsCmd contained " . $commands_with_args{"$opt_code"} . " skipwhite nextgroup=$region\n";
+
+        # # Old tcl.vim example:
+        #
+        # syn keyword tclCommand contained all_outputs skipwhite nextgroup=snpsRegCel0
+        # syn region snpsRegCel0 contained excludenl keepend start=+.+ skip=+\\$+ end=+}\|]\|;\|$+ contains=snpsGrpCel0,@tclStuff
+
+        print SYN "syn keyword $command_type contained " . $commands_with_args{"$opt_code"}  . " skipwhite nextgroup=$region\n";
         print SYN "syn region $region contained excludenl keepend start=+.+";
+
     } else {
+
+        # # Pre-installed tcl.vim example:
+        #
+        # syn region snpxCmd matchgroup=snpxCol start=+\<all_outputs\>+ matchgroup=NONE skip=+\\$+ end=+}\|]\|;\|$+ contains=snpsGrpCel0,@tclStuff
+
         if ($commands_with_args{"$opt_code"} =~ s/ /\\|/g) {
             $commands_with_args{"$opt_code"} = "\\(" . $commands_with_args{"$opt_code"} . "\\)";
         }
-        print SYN "syn region $region matchgroup=snpsXCol start=+\\<" . $commands_with_args{"$opt_code"} . "\\>+ matchgroup=NONE";
+
+        print SYN "syn region $region matchgroup=snpxCol start=+\\<" . $commands_with_args{"$opt_code"} . "\\>+ matchgroup=NONE";
     }
 
     # Finish the syn region command line:
     print SYN " skip=+\\\\\$+ end=+\}\\|]\\|;\\|\$+ contains=$group,\@tclStuff\n";
 
-    my ($double_opts, $single_opts) = split(/ \/\/ /, $opt_code);
+    # # Options and arguments example:
+    #
+    # syn match snpsGrpCel0 contained "-\a\+" contains=snpsSwtCel0
+    # syn keyword snpsSwtCel0 contained -edge_triggered -level_sensitive
+    # syn match snpsGrpCel0 contained "-\a\+" contains=snpsSwtCel0
+    # syn keyword snpsSwtCel0 contained -clock
+
+    my ($single_opts, $double_opts) = split(/ \/\/ /, $opt_code);
+
+    print SYN "syn match $group contained \"-\\a\\+\" contains=$switch\n";
 
     if ($single_opts ne "") {
-        print SYN "syn match $group contained \"-\\a\\+\" contains=$switch\n";
         print SYN "syn keyword $switch contained $single_opts\n";
     }
 
-    if ($double_opts ne "") {
+    # $old_tcl_vim only:
+    if (defined($double_opts) && $double_opts ne "") {
         print SYN "syn match $group contained \"-\\a\\+\" contains=$switch\n";
         print SYN "syn keyword $switch contained $double_opts\n";
     }
@@ -492,9 +574,10 @@ foreach my $opt_code ( sort(keys(%commands_with_args)) ) {
     print SYN "\n";
 }
 
-print SYN "syn region tclEmbeddedStatement start='\\[' end='\\]' contained contains=tclCommand,snpsCmd,tclNumber,tclLineContinue,tclString,tclVarRef,tclEmbeddedStatement\n" unless $old_tcl_vim;
+undef %commands_with_args;
+undef %man_files;
+undef %command_codes;
 
-print SYN "\n";
 
 # ---------------------------------------------------------------------------
 # Highlighting
@@ -503,10 +586,7 @@ print "- footer\n" if $verbose;
 
 print SYN $footer_commands;
 
-print SYN <<FOOTER;
-
-hi def link snpsCmd         Statement
-FOOTER
+print SYN "hi def link $command_type Statement\n" if $old_tcl_vim;
 
 close(SYN);
 
@@ -528,7 +608,7 @@ snpsMan2VimSyntax - create vim syntax files from Synopsys man pages.
 snpsMan2VimSyntax [options]
 
     Options:
-        --all        	    Do not hide known duplicate/GUI commands.
+        --all               Do not hide known duplicate/GUI commands.
         --(no)comments      Adds man file page comments (default: off).
         --help|-?           Shows this help message.
         --manpath /p/man    Defines the path of the man directory.
@@ -610,12 +690,12 @@ parsed and a single VIM syntax definition file is generated.
 The generated syntax file has two sections. In the first section,
 simple commands (those without arguments) are listed as:
 
-    syn keyword snpsCmd example_set_command
+    syn keyword tclCommand example_set_command
 
 In the second section we output syntax regions for commands with
 arguments:
 
-    syn region snpsRegOv matchgroup=snpsCmd start=+\<example_write_command\>+ matchgroup=NONE skip=+\\$+ end=+}\|]\|;\|$+ contains=snpsGrpOv,@tclStuff
+    syn region snpxCmd matchgroup=snpxCol start=+\<example_write_command\>+ matchgroup=NONE skip=+\\$+ end=+}\|]\|;\|$+ contains=snpsGrpOv,@tclStuff
     syn match snpsGrpOv contained "-\a\+" contains=snpsSwOv
     syn keyword snpsSwtOv contained -verbose
     syn match snpsGrpOv contained "-\a\+" contains=snpsSwtOv
@@ -623,8 +703,8 @@ arguments:
 
 The color options assigned to the commands and options are:
 
+    hi def link snpxCol Statement
     hi def link snpsSwtOv Special
-    hi def link snpsCmd Statement
 
 NB. See B<--old-tcl-vim> regarding C<tclStuff> if you are using an old version
 of the F<tcl.vim> syntax script.
@@ -670,8 +750,8 @@ snpsMan2VimSyntax --tool dc --tool icc --comments --out implementation.vim --ver
 =head1 REQUIREMENTS
 
 Obviously, the corresponding Synopsys tools need to be installed to be able
-to access their manual pages. B<nroff> is used to parse the pages, B<col> to
-ignore escaped colour codes. To be able to ignore standard Tcl commands, a
+to access their manual pages. B<man> is used to parse the pages, B<col> to
+ignore tabs and colour codes. To be able to ignore standard Tcl commands, a
 stand-alone version of Tcl needs to be installed (the script searches for
 B<tclsh>).
 
@@ -686,3 +766,4 @@ L<Vim.org/scripts|http://www.vim.org/scripts/script_search_results.php?keywords=
 Eric Roller
 
 =cut
+
