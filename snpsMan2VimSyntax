@@ -476,7 +476,7 @@ print SYN "\n";
 
 print "- commands with arguments\n" if $verbose;
 
-my %command_codes = ();
+my %used_codes = ();
 my $footer_commands = "";
 
 # We use a comand color match group, not a region, in the new tcl.vim.
@@ -487,9 +487,11 @@ $footer_commands = "hi def link snpxCol Statement\n" unless $old_tcl_vim;
 # have been grouped, remember?).
 foreach my $opt_code ( sort(keys(%commands_with_args)) ) {
 
+    my $command_list = $commands_with_args{"$opt_code"};
+
     if ($comments) {
         # Preceed the syntax definition with a comment of the source files.
-        foreach my $name ( split(/ /,$commands_with_args{"$opt_code"}) ) {
+        foreach my $name ( split(/ /,$command_list) ) {
             foreach my $file ( split(/:/, $man_files{"$name"}) ) {
                 print SYN "\" $file\n";
             }
@@ -510,13 +512,13 @@ foreach my $opt_code ( sort(keys(%commands_with_args)) ) {
     # If the code already exists, add a digit: "Qs1", "Qs10", "Qs11", ...
     my $code_base = $code;
     my $code_numr = 0;
-    while (defined($command_codes{"$code"})) {
+    while (defined($used_codes{"$code"})) {
         $code = "$code_base$code_numr";
         $code_numr++;
     }
 
     # Remember the code to be able to detect clashes.
-    $command_codes{"$code"} = 1;
+    $used_codes{"$code"} = 1;
 
     my $region = "snpxCmd";
        $region = "snpsReg$code" if $old_tcl_vim;    # "snpsRegCel0"
@@ -531,7 +533,7 @@ foreach my $opt_code ( sort(keys(%commands_with_args)) ) {
         # syn keyword tclCommand contained all_outputs skipwhite nextgroup=snpsRegCel0
         # syn region snpsRegCel0 contained excludenl keepend start=+.+ skip=+\\$+ end=+}\|]\|;\|$+ contains=snpsGrpCel0,@tclStuff
 
-        print SYN "syn keyword $command_type contained " . $commands_with_args{"$opt_code"}  . " skipwhite nextgroup=$region\n";
+        print SYN "syn keyword $command_type contained " . $command_list . " skipwhite nextgroup=$region\n";
         print SYN "syn region $region contained excludenl keepend start=+.+";
 
     } else {
@@ -540,11 +542,11 @@ foreach my $opt_code ( sort(keys(%commands_with_args)) ) {
         #
         # syn region snpxCmd matchgroup=snpxCol start=+\<all_outputs\>+ matchgroup=NONE skip=+\\$+ end=+}\|]\|;\|$+ contains=snpsGrpCel0,@tclStuff
 
-        if ($commands_with_args{"$opt_code"} =~ s/ /\\|/g) {
-            $commands_with_args{"$opt_code"} = "\\(" . $commands_with_args{"$opt_code"} . "\\)";
+        if ($command_list =~ s/ /\\|/g) {
+            $command_list = "\\(" . $command_list . "\\)";
         }
 
-        print SYN "syn region $region matchgroup=snpxCol start=+\\<" . $commands_with_args{"$opt_code"} . "\\>+ matchgroup=NONE";
+        print SYN "syn region $region matchgroup=snpxCol start=+\\<" . $command_list . "\\>+ matchgroup=NONE";
     }
 
     # Finish the syn region command line:
@@ -576,7 +578,7 @@ foreach my $opt_code ( sort(keys(%commands_with_args)) ) {
 
 undef %commands_with_args;
 undef %man_files;
-undef %command_codes;
+undef %used_codes;
 
 
 # ---------------------------------------------------------------------------
