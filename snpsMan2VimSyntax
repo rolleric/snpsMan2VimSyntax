@@ -523,9 +523,20 @@ print SYN "\n";
 # Commands with arguments.
 # ---------------------------------------------------------------------------
 
+# Certain commands use additional command groups.
+my %command_group = (
+    "filter"            => "snpsAttr",
+    "filter_collection" => "snpsAttr",
+    "get_attribute"     => "snpsAttr",
+    "remove_attribute"  => "snpsAttr",
+    "set_attribute"     => "snpsAttr",
+    "sort_collection"   => "snpsAttr",
+);
+
 print "- commands with arguments\n" if $verbose;
 
 my %used_codes = ();
+my %used_groups = ();
 my $footer_commands = "";
 
 # We use a comand color match group, not a region, in the new tcl.vim.
@@ -537,10 +548,22 @@ $footer_commands = "hi def link snpxCol Statement\n" unless $old_tcl_vim;
 foreach my $opt_code ( sort(keys(%commands_with_args)) ) {
 
     my $command_list = $commands_with_args{"$opt_code"};
+    my %group_keys = ( "\@tclStuff" => 1 );
 
-    if ($comments) {
-        # Preceed the syntax definition with a comment of the source files.
-        foreach my $name ( split(/ /,$command_list) ) {
+    foreach my $name ( split(/ /,$command_list) ) {
+        # See whether any of the commands should include custom groups.
+        if (defined($command_group{"$name"})) {
+            my $add_group = $command_group{"$name"};
+
+            # The syntax contains= list needs to add this group.
+            $group_keys{"$add_group"} = 1;
+
+            # Remember that we need to add the definition for this group.
+            $used_groups{"$add_group"} = 1;
+        }
+
+        if ($comments) {
+            # Preceed the syntax definition with a comment of the source files.
             foreach my $file ( split(/:/, $man_files{"$name"}) ) {
                 print SYN "\" $file\n";
             }
@@ -599,7 +622,7 @@ foreach my $opt_code ( sort(keys(%commands_with_args)) ) {
     }
 
     # Finish the syn region command line:
-    print SYN " skip=+\\\\\$+ end=+\}\\|]\\|;\\|\$+ contains=$group,\@tclStuff\n";
+    print SYN " skip=+\\\\\$+ end=+\}\\|]\\|;\\|\$+ contains=$group," . join(",",keys(%group_keys)) . "\n";
 
     # # Options and arguments example:
     #
@@ -622,12 +645,204 @@ foreach my $opt_code ( sort(keys(%commands_with_args)) ) {
         print SYN "syn keyword $switch contained $double_opts\n";
     }
 
+    # # Assemble the commands that we will add to the end:
+    #
+    # hi def link snpsSwxCel0 Error
+    # hi def link snpsSwtCel0 Special
+
+    $footer_commands .= "hi def link $switch Special\n";
+
     print SYN "\n";
 }
 
 undef %commands_with_args;
 undef %man_files;
 undef %used_codes;
+
+
+# ---------------------------------------------------------------------------
+# Additional groups
+# ---------------------------------------------------------------------------
+
+if (defined($used_groups{"snpsAttr"})) {
+
+    print "- attributes\n" if $verbose;
+
+    # All the attributes that we care about.
+    # This is a bit ugly but easy to maintain:
+    my @attributes = (
+        "actual_max_net_capacitance",
+        "actual_min_net_capacitance",
+        "async_set_reset_q async_set_reset_qn",
+        "balance_registers",
+        "boundary_optimization",
+        "clock_fall_transition",
+        "clock_gate_fanout",
+        "clock_gate_has_observation",
+        "clock_gate_has_postcontrol",
+        "clock_gate_has_precontrol",
+        "clock_gate_level",
+        "clock_gate_module_fanout",
+        "clock_gate_multi_stage_fanout",
+        "clock_gate_register_fanout",
+        "clock_gate_transitive_register_fanout",
+        "clock_gating_depth",
+        "clock_rise_transition",
+        "combinational_type_exact",
+        "connection_class",
+        "default_flip_flop_type",
+        "default_flip_flop_type_exact",
+        "default_latch_type_exact",
+        "design_type",
+        "direction",
+        "disable_timing",
+        "dont_touch",
+        "dont_touch_network",
+        "dont_use",
+        "driven_by_dont_care",
+        "driven_by_logic_one",
+        "driven_by_logic_zero",
+        "driving_cell_dont_scale",
+        "driving_cell_fall",
+        "driving_cell_from_pin_fall",
+        "driving_cell_from_pin_rise",
+        "driving_cell_library_fall",
+        "driving_cell_library_rise",
+        "driving_cell_multiply_by",
+        "driving_cell_pin_fall",
+        "driving_cell_pin_rise",
+        "driving_cell_rise",
+        "fall_drive",
+        "fanout_load",
+        "fix_hold",
+        "flatten",
+        "flatten_effort",
+        "flatten_minimize",
+        "flatten_phase",
+        "flip_flop_type",
+        "flip_flop_type_exact",
+        "formula",
+        "full_name",
+        "hold_uncertainty",
+        "implementation",
+        "is_black_box",
+        "is_clock_gate",
+        "is_clock_gate_clock_pin",
+        "is_clock_gate_enable_pin",
+        "is_clock_gate_observation_pin",
+        "is_clock_gate_output_pin",
+        "is_clock_gate_test_pin",
+        "is_clock_gated",
+        "is_clock_gating_design",
+        "is_clock_gating_observability_design",
+        "is_combinational",
+        "is_dw_subblock",
+        "is_gicg",
+        "is_hierarchical",
+        "is_icg",
+        "is_isolated_operator",
+        "is_latch_based_clock_gate",
+        "is_latch_free_clock_gate",
+        "is_mapped",
+        "is_negative_edge_clock_gate",
+        "is_operand_isolation_control_pin",
+        "is_operand_isolation_data_pin",
+        "is_operand_isolation_output_pin",
+        "is_operand_isolator",
+        "is_positive_edge_clock_gate",
+        "is_sequential",
+        "is_synlib_module",
+        "is_synlib_operator",
+        "is_test_circuitry",
+        "is_unmapped",
+        "latch_type_exact",
+        "load",
+        "local_link_library",
+        "map_only",
+        "max_area",
+        "max_capacitance",
+        "max_dynamic_power",
+        "max_fall_delay",
+        "max_fall_slack",
+        "max_fanout",
+        "max_leakage_power",
+        "max_rise_delay",
+        "max_rise_slack",
+        "max_slack",
+        "max_time_borrow",
+        "max_total_power",
+        "max_transition",
+        "min_capacitance",
+        "min_fall_delay",
+        "min_fall_slack",
+        "min_rise_delay",
+        "min_rise_slack",
+        "min_slack",
+        "minimize_tree_delay",
+        "model_drive",
+        "model_load",
+        "model_map_effort",
+        "model_scale part",
+        "no_sequential_degenerates",
+        "observe_pin",
+        "operand_isolation_style",
+        "optimize_registers",
+        "period",
+        "pin_direction",
+        "pin_properties",
+        "port_direction",
+        "port_is_pad",
+        "preferred",
+        "propagated_clock",
+        "ref_name",
+        "register_list",
+        "resource_allocation",
+        "resource_implementation",
+        "scan",
+        "scan_chain",
+        "scan_element",
+        "scan_group",
+        "scan_latch_transparent",
+        "sequential_bridging",
+        "set_id",
+        "set_pin",
+        "setup_uncertainty",
+        "share_cse",
+        "signal_type",
+        "sources",
+        "static_probability",
+        "structure",
+        "structure_boolean",
+        "structure_timing",
+        "test_assume",
+        "test_initial",
+        "test_isolate",
+        "test_routing_position",
+        "toggle_rate",
+        "true_delay_case_analysis",
+        "ungroup",
+        "wire_load_model_mode",
+        "wired_logic_disable",
+        "xnfout_use_blknames",
+    );
+
+    my $prefix = "syn keyword snpsAttr";
+    my $line = $prefix . " contained";
+
+    for my $name ( sort(@attributes) ) {
+        if (length($line) > 80) {
+            print SYN "$line\n";
+            $line = $prefix;
+        }
+        $line .= " $name";
+    }
+
+    print SYN "$line\n\n";
+
+    $footer_commands .= "hi def link snpsAttr Define\n";
+}
+
+undef %used_groups;
 
 
 # ---------------------------------------------------------------------------
