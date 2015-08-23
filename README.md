@@ -98,7 +98,7 @@ and `:set syntax=tcl`.
 
 * The Synopsys tools need to be installed.
 
-* The script uses `nroff` to parse the man pages
+* The script uses `man` to parse the man pages
   and `col` to remove colour codes.
 
 * To auto-detect standard Tcl commands, a stand-alone Tcl installation is
