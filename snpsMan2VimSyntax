@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 
-my $versnum = "1.4";
+my $versnum = "1.5";
 
 ## DEVELOPMENT ONLY:
 ## use diagnostics;            # force verbose warning diagnostics
@@ -325,6 +325,7 @@ foreach my $name ( sort(keys(%man_files)) ) {
 
     print "+ $name\n" if $verbose;
 
+    my %errors_opts = ();
     my %double_opts = ();  # $old_tcl_vim only
     my %single_opts = ();
     my $opt_count = 0;
@@ -395,6 +396,14 @@ foreach my $name ( sort(keys(%man_files)) ) {
             $synopsis =~ s/(\w+)- +(\w+)/$1$2/g;
         }
 
+        # Special case, remove: "-opt obsolete_-_please_use_-_-arg".
+        # See, for instance, dc_shell's "set_driving_cell".
+            while ($synopsis =~ s/(-\w+) +obsolete[\w-]*//) {
+                my $opt_name = &abbrev_opt_name($name,$1);
+                $errors_opts{"$opt_name"} = 1;
+                $opt_count++;
+            }
+
         # Detect the "-options with_arguments" or "-type { a | b }".
         if ($old_tcl_vim) {
             # There must be only a single space inbetween:
@@ -422,9 +431,15 @@ foreach my $name ( sort(keys(%man_files)) ) {
 
     if ($opt_count) {
 
+        # Avoid duplication.
+        delete @single_opts{keys %errors_opts};
+
         # To be able to detect commands with the same options, we compile the
-        # options into a coded string like "-quiet -strict // -1995 -type".
+        # options into a coded string like "-quiet -strict // -bad // -1995 -type".
         my $opt_code = join(" ",sort(keys(%single_opts)));
+
+	# Secondly, the obsolete options - if any.
+        $opt_code .= " // " . join(" ",sort(keys(%errors_opts)));
 
         if ($old_tcl_vim) {
             # Avoid parsing errors where single options were also detected to
@@ -596,6 +611,7 @@ foreach my $opt_code ( sort(keys(%commands_with_args)) ) {
        $region = "snpsReg$code" if $old_tcl_vim;    # "snpsRegCel0"
     my $group  = "snpsGrp$code";                    # "snpsGrpCel0"
     my $switch = "snpsSwt$code";                    # "snpsSwtCel0"
+    my $swierr = "snpsSwx$code";                    # "snpsSwxCel0"
 
     # Complex commands require region declarations.
     if ($old_tcl_vim) {
@@ -631,15 +647,25 @@ foreach my $opt_code ( sort(keys(%commands_with_args)) ) {
     # syn match snpsGrpCel0 contained "-\a\+" contains=snpsSwtCel0
     # syn keyword snpsSwtCel0 contained -clock
 
-    my ($single_opts, $double_opts) = split(/ \/\/ /, $opt_code);
+    my ($single_opts, $errors_opts, $double_opts) = split(/ \/\/ /, $opt_code);
 
-    print SYN "syn match $group contained \"-\\a\\+\" contains=$switch\n";
+    my $contains="$switch";
+    $contains .= ",$swierr" if (defined($errors_opts) && $errors_opts ne "");
+
+    print SYN "syn match $group contained \"-\\a\\+\" contains=$contains\n";
 
     if ($single_opts ne "") {
         print SYN "syn keyword $switch contained $single_opts\n";
     }
 
-    # $old_tcl_vim only:
+    # If there were obsolete options, add them to the snpwSwx* group:
+    if (defined($errors_opts) && $errors_opts ne "") {
+        print SYN "syn keyword $swierr contained $errors_opts\n";
+
+        $footer_commands .= "hi def link $swierr Error\n";
+    }
+
+    # $old_tcl_vim only: options with arguments.
     if (defined($double_opts) && $double_opts ne "") {
         print SYN "syn match $group contained \"-\\a\\+\" contains=$switch\n";
         print SYN "syn keyword $switch contained $double_opts\n";
