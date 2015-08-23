@@ -8,8 +8,8 @@ file for vim.
 
 ## Details
 
-Based on the [Synopsys](www.synopsys.com) man pages for one or more of these
-tools installed on your system:
+Based on the [Synopsys](http://www.synopsys.com) man pages for one or more of
+these tools installed on your system:
 
 * Design Compiler,
 * IC Compiler,
