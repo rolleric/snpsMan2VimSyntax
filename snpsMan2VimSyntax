@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 
-my $versnum = "1.5";
+my $versnum = "1.6";
 
 ## DEVELOPMENT ONLY:
 ## use diagnostics;            # force verbose warning diagnostics
@@ -618,7 +618,7 @@ foreach my $opt_code ( sort(keys(%commands_with_args)) ) {
     # Remember the code to be able to detect clashes.
     $used_codes{"$code"} = 1;
 
-    my $region = "snpxCmd";
+    my $region = "tcltkCommand";
        $region = "snpsReg$code" if $old_tcl_vim;    # "snpsRegCel0"
     my $group  = "snpsGrp$code";                    # "snpsGrpCel0"
     my $switch = "snpsSwt$code";                    # "snpsSwtCel0"
@@ -629,7 +629,7 @@ foreach my $opt_code ( sort(keys(%commands_with_args)) ) {
 
         # # Old tcl.vim example:
         #
-        # syn keyword tclCommand contained all_outputs skipwhite nextgroup=snpsRegCel0
+        # syn keyword snpsCmd contained all_outputs skipwhite nextgroup=snpsRegCel0
         # syn region snpsRegCel0 contained excludenl keepend start=+.+ skip=+\\$+ end=+}\|]\|;\|$+ contains=snpsGrpCel0,@tclStuff
 
         print SYN "syn keyword $command_type contained " . $command_list . " skipwhite nextgroup=$region\n";
@@ -639,7 +639,7 @@ foreach my $opt_code ( sort(keys(%commands_with_args)) ) {
 
         # # Pre-installed tcl.vim example:
         #
-        # syn region snpxCmd matchgroup=snpxCol start=+\<all_outputs\>+ matchgroup=NONE skip=+\\$+ end=+}\|]\|;\|$+ contains=snpsGrpCel0,@tclStuff
+        # syn region tcltkCommand matchgroup=snpxCol start=+\<all_outputs\>+ matchgroup=NONE skip=+\\$+ end=+}\|]\|;\|$+ contains=snpsGrpCel0,@tclStuff
 
         if ($command_list =~ s/ /\\|/g) {
             $command_list = "\\(" . $command_list . "\\)";
@@ -649,7 +649,7 @@ foreach my $opt_code ( sort(keys(%commands_with_args)) ) {
     }
 
     # Finish the syn region command line:
-    print SYN " skip=+\\\\\$+ end=+\}\\|]\\|;\\|\$+ contains=$group," . join(",",keys(%group_keys)) . "\n";
+    print SYN " skip=+\\\\\$+ end=+]\\|;\\|\$+me=e-1 contains=$group," . join(",",keys(%group_keys)) . "\n";
 
     # # Options and arguments example:
     #
@@ -1021,7 +1021,7 @@ simple commands (those without arguments) are listed as:
 In the second section we output syntax regions for commands with
 arguments:
 
-    syn region snpxCmd matchgroup=snpxCol start=+\<example_write_command\>+ matchgroup=NONE skip=+\\$+ end=+}\|]\|;\|$+ contains=snpsGrpOv,@tclStuff
+    syn region tcltkCommand matchgroup=snpxCol start=+\<example_write_command\>+ matchgroup=NONE skip=+\\$+ end=+}\|]\|;\|$+ contains=snpsGrpOv,@tclStuff
     syn match snpsGrpOv contained "-\a\+" contains=snpsSwOv
     syn keyword snpsSwtOv contained -verbose
     syn match snpsGrpOv contained "-\a\+" contains=snpsSwtOv
