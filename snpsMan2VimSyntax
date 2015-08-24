@@ -166,6 +166,7 @@ my %ignore_command = (
         "get_pin" => 1,
         "get_port" => 1,
         "get_selection" => !$gui_commands,
+        "library" => 1,
         "packagens" => 1,
         "pkMkIndex" => 1,
 );
