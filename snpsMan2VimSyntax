@@ -311,6 +311,22 @@ sub abbrev_opt_name {
 
 
 # ---------------------------------------------------------------------------
+#   Setup groups, e.g. attributes.
+#
+# ---------------------------------------------------------------------------
+
+# Certain commands use additional command groups.
+# N.B. Commands with a "-filter" options will also be added.
+my %command_group = (
+    "filter"            => "snpsAttr,attString",
+    "filter_collection" => "snpsAttr,attString",
+    "get_attribute"     => "snpsAttr,attString",
+    "remove_attribute"  => "snpsAttr,attString",
+    "set_attribute"     => "snpsAttr,attString",
+    "sort_collection"   => "snpsAttr,attString",
+);
+
+# ---------------------------------------------------------------------------
 #   Reading the Manuals
 #
 # ---------------------------------------------------------------------------
@@ -427,6 +443,9 @@ foreach my $name ( sort(keys(%man_files)) ) {
                 my $opt_name = &abbrev_opt_name($name,$1);
                 $single_opts{"$opt_name"} = 1;
                 $opt_count++;
+
+                # With the -filter option, we may like see attributes.
+                $command_group{"$name"} = "snpsAttr,attString" if $opt_name eq "-filter";
             }
     }
 
@@ -503,7 +522,7 @@ if ($old_tcl_vim) {
 OLD_VIM
 } else {
     # Define the tclStff cluster similar to that in the old tcl.vim script.
-    print SYN "syn cluster tclStuff contains=tclLineContinue,tclNumber,tclVarRef,tclString,tcltkCommand,tclCommand,snpxCmd,snpsCmd\n\n";
+    print SYN "syn cluster tclStuff contains=tclLineContinue,tclNumber,tclVarRef,tclString,tcltkCommand,tclCommand,tclEmbeddedStatement\n\n";
 }
 
 
@@ -539,16 +558,6 @@ print SYN "\n";
 # Commands with arguments.
 # ---------------------------------------------------------------------------
 
-# Certain commands use additional command groups.
-my %command_group = (
-    "filter"            => "snpsAttr",
-    "filter_collection" => "snpsAttr",
-    "get_attribute"     => "snpsAttr",
-    "remove_attribute"  => "snpsAttr",
-    "set_attribute"     => "snpsAttr",
-    "sort_collection"   => "snpsAttr",
-);
-
 print "- commands with arguments\n" if $verbose;
 
 my %used_codes = ();
@@ -569,13 +578,14 @@ foreach my $opt_code ( sort(keys(%commands_with_args)) ) {
     foreach my $name ( split(/ /,$command_list) ) {
         # See whether any of the commands should include custom groups.
         if (defined($command_group{"$name"})) {
-            my $add_group = $command_group{"$name"};
+            foreach my $add_group ( split(/,/, $command_group{"$name"}) ) {
 
-            # The syntax contains= list needs to add this group.
-            $group_keys{"$add_group"} = 1;
+                # The syntax contains= list needs to add this group.
+                $group_keys{"$add_group"} = 1;
 
-            # Remember that we need to add the definition for this group.
-            $used_groups{"$add_group"} = 1;
+                # Remember that we need to add the definition for this group.
+                $used_groups{"$add_group"} = 1;
+            }
         }
 
         if ($comments) {
@@ -867,6 +877,20 @@ if (defined($used_groups{"snpsAttr"})) {
     print SYN "$line\n\n";
 
     $footer_commands .= "hi def link snpsAttr Define\n";
+}
+
+if (defined($used_groups{"attString"})) {
+
+    print SYN "\" To highlight attribute names within strings:\n";
+    if ($old_tcl_vim) {
+        # Based on the tclQuotes region:
+        print SYN "syn region attString contained start=+\\(\\\\\\)\\\@<!\"+ end=+\"+ skip=+\\(\\\\\\)\\\@<!\\\\\"\\|\\(\\\\\\\\\\\\\\)\\\@<!\\\\\"\\|\\\\\\\\+ contains=\@tclQuotesCluster,snpsAttr\n\n";
+    } else {
+        # Based on the tclString region:
+        print SYN "syn region attString contained start=+[^\\\\]\"+ end=+\"+ skip=+\\\\\\\\\\|\\\\\"+ contains=\@tclSpecialC,\@tclVarRefC,snpsAttr,tclEmbeddedStatement\n\n";
+    }
+
+    $footer_commands .= "hi def link attString String\n";
 }
 
 undef %used_groups;
