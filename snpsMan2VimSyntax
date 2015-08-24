@@ -658,7 +658,7 @@ foreach my $opt_code ( sort(keys(%commands_with_args)) ) {
         print SYN "syn keyword $switch contained $single_opts\n";
     }
 
-    # If there were obsolete options, add them to the snpwSwx* group:
+    # If there were obsolete options, add them to the snpsSwx* group:
     if (defined($errors_opts) && $errors_opts ne "") {
         print SYN "syn keyword $swierr contained $errors_opts\n";
 
@@ -852,8 +852,8 @@ if (defined($used_groups{"snpsAttr"})) {
         "xnfout_use_blknames",
     );
 
-    my $prefix = "syn keyword snpsAttr";
-    my $line = $prefix . " contained";
+    my $prefix = "syn keyword snpsAttr contained";
+    my $line = $prefix;
 
     for my $name ( sort(@attributes) ) {
         if (length($line) > 80) {
