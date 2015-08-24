@@ -6,6 +6,8 @@ _Created:_ 14th August, 2015
 This Perl script parses Synopsys man pages to generate a Tcl-compatible syntax
 file for vim.
 
+![](https://raw.github.com/rolleric/snpsMan2VimSyntax/master/syntax_example.png)
+
 ## Details
 
 Based on the [Synopsys](http://www.synopsys.com) man pages for one or more of
