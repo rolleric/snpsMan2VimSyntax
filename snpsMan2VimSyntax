@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 
-my $versnum = "1.6";
+my $versnum = "1.6.1";
 
 ## DEVELOPMENT ONLY:
 ## use diagnostics;            # force verbose warning diagnostics
