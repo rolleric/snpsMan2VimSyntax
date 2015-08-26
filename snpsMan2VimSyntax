@@ -279,6 +279,7 @@ my %abbrev_options = (
     "-crosstalk_delta"      => "-crosstalk[_delta]",
     "-delay_type"           => "-delay[_type]",
     "-dictionary"           => "-dict[ionary]",
+    "-endpoints_only"       => "-end[points_only]",
     "-hierarchical"         => "-hier[archical]",
     "-hierarchy"            => "-hier[archy]",
     "-incremental"          => "-incr[emental]",
@@ -287,6 +288,7 @@ my %abbrev_options = (
     "-of_objects"           => "-of[_objects]",
     "-path_type"            => "-path[_type]",
     "-significant_digits"   => "-sig[nificant_digits]",
+    "-startpoints_only"     => "-start[points_only]",
     "-temperature"          => "-temp[erature]",
     "-transition_time"      => "-transition[_time]",
     "-user_defined"         => "-user[_defined]",
@@ -458,7 +460,7 @@ foreach my $name ( sort(keys(%man_files)) ) {
         # options into a coded string like "-quiet -strict // -bad // -1995 -type".
         my $opt_code = join(" ",sort(keys(%single_opts)));
 
-	# Secondly, the obsolete options - if any.
+        # Secondly, the obsolete options - if any.
         $opt_code .= " // " . join(" ",sort(keys(%errors_opts)));
 
         if ($old_tcl_vim) {
