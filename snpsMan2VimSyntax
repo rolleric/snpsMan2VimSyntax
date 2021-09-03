@@ -1153,6 +1153,7 @@ and C<syntax on>, Vim will read (1) or if present (2), then (A) which loads
 
 snpsMan2VimSyntax --tool dc --tool icc --comments --out implementation.vim --verbose
 
+
 =head1 REQUIREMENTS
 
 Obviously, the corresponding Synopsys tools need to be installed to be able
@@ -1173,4 +1174,3 @@ L<Vim.org/scripts|http://www.vim.org/scripts/script_search_results.php?keywords=
 Eric Roller
 
 =cut
-
