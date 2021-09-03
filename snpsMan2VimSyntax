@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 
-my $versnum = "1.6.2";
+my $versnum = "1.7";
 
 ## DEVELOPMENT ONLY:
 ## use diagnostics;            # force verbose warning diagnostics
@@ -100,7 +100,6 @@ print "\n" if $verbose > 1;
 TOOL:
 # foreach tool ( "dc_shell" "fm_shell" "pt_shell" )
 foreach my $tool ( keys(%snps_tools) ) {
-
     # Ignore disabled tools.
     next TOOL unless $snps_tools{"$tool"};
 
@@ -119,7 +118,6 @@ foreach my $tool ( keys(%snps_tools) ) {
     MAN:
     # foreach dir ( ".../doc/{icc,snps_gui,snps_tcl,syn}/man" )
     foreach my $dir ( glob("$path") ) {
-
         # Optionally ignore the snps_gui/man pages as,
         # ... well, who uses the GUI anyway?
         unless ($gui_commands) {
@@ -192,8 +190,8 @@ unless ($tcl_commands) {
     $path =~ s|/bin/tclsh||;
     foreach my $dir ( glob("$path/man $path/share/man") ) {
         print "$dir\n" if $verbose > 1;
-        foreach my $file ( glob("$dir/mann/*.n $dir/mann/*.n.gz") ) {
 
+        foreach my $file ( glob("$dir/mann/*.n $dir/mann/*.n.gz") ) {
             # Get the command name from the file name.
             my $name = basename($file, (".n", ".n.gz"));
 
@@ -227,7 +225,6 @@ foreach my $dir ( @man_paths ) {
     # Look up the .../man/cat2/* files.
     PAGE:
     foreach my $file ( glob("$dir/cat2/*.2") ) {
-
         # Get the command name from the file name.
         # name = "write_file"
         my $name = basename($file, ".2");
@@ -250,6 +247,7 @@ foreach my $dir ( @man_paths ) {
         # e.g man_files{"write_file"} = "path1/write_file.2:path2/write_file.2"
         if (defined($man_files{"$name"})) {
             $man_files{"$name"} .= ":$file";
+
         } else {
             $man_files{"$name"} = "$file";
             print "- $name\n" if $verbose > 1;
@@ -328,6 +326,7 @@ my %command_group = (
     "sort_collection"   => "snpsAttr,attString",
 );
 
+
 # ---------------------------------------------------------------------------
 #   Reading the Manuals
 #
@@ -341,18 +340,17 @@ my %commands_with_args = ();
 PARSE:
 # foreach name ( "read_verilog" "write_file" ... )
 foreach my $name ( sort(keys(%man_files)) ) {
-
     print "+ $name\n" if $verbose;
 
     my %errors_opts = ();
-    my %double_opts = ();  # $old_tcl_vim only
+    my %double_opts = ();   # $old_tcl_vim only
     my %single_opts = ();
     my $opt_count = 0;
+    my @synopsises = ();    # each of the SYNOPSIS strings in all files.
 
     # A command may have multiple man pages for multiple tools.
     # foreach file ( "path1/write_file.2" "path2/write_file.2" )
     foreach my $file ( split(/:/, $man_files{"$name"}) ) {
-
         print "    $file\n" if $verbose > 1;
 
         my $section = 0;
@@ -360,7 +358,9 @@ foreach my $name ( sort(keys(%man_files)) ) {
 
         # Get the man page as a simple text file:
         LINE:
-        foreach my $line ( split(/\n/, qx/man $file | col -bx/) ) {
+        foreach my $line ( split(/\n/, qx/man -7 $file | col -bx/) ) {
+            # Beware; we have seen other dashes, not just "minus":
+            $line =~ s/[⁃−‒‑]/-/g;
 
             if ($section == 1) {
                 # Parsing the "SYNTAX" section.
@@ -388,7 +388,6 @@ foreach my $name ( sort(keys(%man_files)) ) {
                 last LINE if $line =~ m/^[A-Z]{3}/;
 
                 if ($line =~ m/^\s{6,8}-\w+/) {
-
                     # The first work after the option must
                     # not begin with an uppercase letter.
                     # If it did, remove the trailing text.
@@ -412,13 +411,19 @@ foreach my $name ( sort(keys(%man_files)) ) {
         if ($section == 1) {
             # Fix hyphenations: "-quiet -applica- tion name"
             # This fixes, for instance, "check_script -applica".
-            $synopsis =~ s/(\w+)- +(\w+)/$1$2/g;
+            $synopsis =~ s/(\w+)-\s+(\w+)/$1$2/g;
         }
+        
+        push(@synopsises, $synopsis);
+    } # foreach file
 
+    foreach my $synopsis (@synopsises) {
         # Special case, remove: "-opt obsolete_-_please_use_-_-arg".
         # See, for instance, dc_shell's "set_driving_cell".
-            while ($synopsis =~ s/(-\w+) +obsolete[\w-]*//) {
+            while ($synopsis =~ s/(-\w+)\s+obsolete[\w-]*//) {
                 my $opt_name = &abbrev_opt_name($name,$1);
+                next if defined($errors_opts{"$opt_name"});
+                print "  $opt_name\n" if $verbose > 1;
                 $errors_opts{"$opt_name"} = 1;
                 $opt_count++;
             }
@@ -428,13 +433,17 @@ foreach my $name ( sort(keys(%man_files)) ) {
             # There must be only a single space inbetween:
             while ($synopsis =~ s/(-\w+) (\{|\w+)//) {
                 my $opt_name = &abbrev_opt_name($name,$1);
+                next if defined($double_opts{"$opt_name"});
+                print "  $opt_name\n" if $verbose > 1;
                 $double_opts{"$opt_name"} = 1;
                 $opt_count++;
             }
 
             # More spaces if enclosed in square braces: "[-a  b]"
-            while ($synopsis =~ s/\[(-\w+) +(\w+)\]//) {
+            while ($synopsis =~ s/\[(-\w+)\s+(\w+)\]//) {
                 my $opt_name = &abbrev_opt_name($name,$1);
+                next if defined($double_opts{"$opt_name"});
+                print "  $opt_name\n" if $verbose > 1;
                 $double_opts{"$opt_name"} = 1;
                 $opt_count++;
             }
@@ -443,16 +452,17 @@ foreach my $name ( sort(keys(%man_files)) ) {
             # Detect the "-single_options".
             while ($synopsis =~ s/(-\w+)//) {
                 my $opt_name = &abbrev_opt_name($name,$1);
+                next if defined($single_opts{"$opt_name"});
+                print "  $opt_name\n" if $verbose > 1;
                 $single_opts{"$opt_name"} = 1;
                 $opt_count++;
 
                 # With the -filter option, we may like see attributes.
                 $command_group{"$name"} = "snpsAttr,attString" if $opt_name eq "-filter";
             }
-    }
+    } # foreach SYNOPSIS string
 
     if ($opt_count) {
-
         # Avoid duplication.
         delete @single_opts{keys %errors_opts};
 
@@ -476,6 +486,7 @@ foreach my $name ( sort(keys(%man_files)) ) {
         # by creating another hash table: opt_code => commands.
         if (defined($commands_with_args{"$opt_code"})) {
             $commands_with_args{"$opt_code"} .= " $name";
+
         } else {
             $commands_with_args{"$opt_code"} = $name;
         }
@@ -522,6 +533,7 @@ if ($old_tcl_vim) {
 "         without the --old-tcl-vim option.
 
 OLD_VIM
+
 } else {
     # Define the tclStff cluster similar to that in the old tcl.vim script.
     print SYN "syn cluster tclStuff contains=tclLineContinue,tclNumber,tclVarRef,tclString,tcltkCommand,tclCommand,tclEmbeddedStatement\n\n";
@@ -537,7 +549,6 @@ print "- simple commands\n" if $verbose;
 my $command_type = $old_tcl_vim ? "snpsCmd" : "tclCommand";
 
 foreach my $name ( sort(@simple_commands) ) {
-
     if ($comments) {
         # Preceed the syntax definition with a comment of the source files.
         foreach my $file ( split(/:/, $man_files{"$name"}) ) {
@@ -548,7 +559,6 @@ foreach my $name ( sort(@simple_commands) ) {
     # Simple commands have a single-line syntax declaration:
     #
     # syn keyword tclCommand current_design
-
     print SYN "syn keyword $command_type $name\n";
 }
 
@@ -573,7 +583,6 @@ $footer_commands = "hi def link snpxCol Statement\n" unless $old_tcl_vim;
 # is not based on the command names, but on their arguments (by which they
 # have been grouped, remember?).
 foreach my $opt_code ( sort(keys(%commands_with_args)) ) {
-
     my $command_list = $commands_with_args{"$opt_code"};
     my %group_keys = ( "\@tclStuff" => 1 );
 
@@ -581,7 +590,6 @@ foreach my $opt_code ( sort(keys(%commands_with_args)) ) {
         # See whether any of the commands should include custom groups.
         if (defined($command_group{"$name"})) {
             foreach my $add_group ( split(/,/, $command_group{"$name"}) ) {
-
                 # The syntax contains= list needs to add this group.
                 $group_keys{"$add_group"} = 1;
 
@@ -628,17 +636,14 @@ foreach my $opt_code ( sort(keys(%commands_with_args)) ) {
 
     # Complex commands require region declarations.
     if ($old_tcl_vim) {
-
         # # Old tcl.vim example:
         #
         # syn keyword snpsCmd contained all_outputs skipwhite nextgroup=snpsRegCel0
         # syn region snpsRegCel0 contained excludenl keepend start=+.+ skip=+\\$+ end=+}\|]\|;\|$+ contains=snpsGrpCel0,@tclStuff
-
         print SYN "syn keyword $command_type contained " . $command_list . " skipwhite nextgroup=$region\n";
         print SYN "syn region $region contained excludenl keepend start=+.+";
 
     } else {
-
         # # Pre-installed tcl.vim example:
         #
         # syn region tcltkCommand matchgroup=snpxCol start=+\<all_outputs\>+ matchgroup=NONE skip=+\\$+ end=+}\|]\|;\|$+ contains=snpsGrpCel0,@tclStuff
@@ -704,7 +709,6 @@ undef %used_codes;
 # ---------------------------------------------------------------------------
 
 if (defined($used_groups{"snpsAttr"})) {
-
     print "- attributes\n" if $verbose;
 
     # All the attributes that we care about.
@@ -966,7 +970,6 @@ if (defined($used_groups{"snpsAttr"})) {
 }
 
 if (defined($used_groups{"attString"})) {
-
     print SYN "\" To highlight attribute names within strings:\n";
     if ($old_tcl_vim) {
         # Based on the tclQuotes region:
