@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 
-my $versnum = "1.6.1";
+my $versnum = "1.6.2";
 
 ## DEVELOPMENT ONLY:
 ## use diagnostics;            # force verbose warning diagnostics
@@ -177,7 +177,6 @@ foreach my $name ( keys(%ignore_command) ) {
 }
 
 unless ($tcl_commands) {
-
     print "Seaching for Tcl commands to igonore: " if $verbose;
     print "\n" if $verbose > 1;
 
@@ -192,6 +191,7 @@ unless ($tcl_commands) {
     # Fins the path to the man pages.
     $path =~ s|/bin/tclsh||;
     foreach my $dir ( glob("$path/man $path/share/man") ) {
+        print "$dir\n" if $verbose > 1;
         foreach my $file ( glob("$dir/mann/*.n $dir/mann/*.n.gz") ) {
 
             # Get the command name from the file name.
@@ -717,6 +717,7 @@ if (defined($used_groups{"snpsAttr"})) {
         "balance_registers",
         "bbox",
         "boundary_optimization",
+        "bus_name",
         "capture_clock_paths",
         "case_value",
         "clock_fall_transition",
@@ -802,6 +803,7 @@ if (defined($used_groups{"snpsAttr"})) {
         "is_annotated_rise_min",
         "is_async_pin",
         "is_black_box",
+        "is_bussed",
         "is_cellarc",
         "is_clock_gate",
         "is_clock_gate_clock_pin",
@@ -816,6 +818,7 @@ if (defined($used_groups{"snpsAttr"})) {
         "is_combinational",
         "is_data_pin",
         "is_disabled",
+        "is_diode",
         "is_dw_subblock",
         "is_generated",
         "is_gicg",
@@ -876,11 +879,14 @@ if (defined($used_groups{"snpsAttr"})) {
         "object",
         "object_class",
         "observe_pin",
+        "op_used_in_normal_op",
         "operand_isolation_style",
         "optimize_registers",
+        "part",
         "path_group",
         "path_type",
         "period",
+        "pg_pin_weight",
         "pin_direction",
         "pin_properties",
         "points",
@@ -925,9 +931,12 @@ if (defined($used_groups{"snpsAttr"})) {
         "structure",
         "structure_boolean",
         "structure_timing",
+        "switching_activity",
         "test_assume",
+        "test_dont_fault",
         "test_initial",
         "test_isolate",
+        "test_require",
         "test_routing_position",
         "time_borrowed_from_endpoint",
         "time_lent_to_startpoint",
@@ -997,6 +1006,7 @@ __END__
 
 snpsMan2VimSyntax - create vim syntax files from Synopsys man pages.
 
+
 =head1 SYNOPSIS
 
 snpsMan2VimSyntax [options]
@@ -1010,6 +1020,7 @@ snpsMan2VimSyntax [options]
         --tool id           Will enable handling "<id>_shell" commands.
         --usage             Shows just the synopsis of the help message.
         --verbose           Shows more progress or help messages.
+
 
 =head1 OPTIONS
 
@@ -1070,6 +1081,7 @@ Shows the version number or the verbose version information for
 this script.
 
 =back
+
 
 =head1 DESCRIPTION
 
@@ -1154,6 +1166,7 @@ B<tclsh>).
 
 L<Vim.org|http://www.vim.org/>
 L<Vim.org/scripts|http://www.vim.org/scripts/script_search_results.php?keywords=tcl&script_type=syntax&order_by=downloads&direction=descending&search=search>
+
 
 =head1 AUTHOR
 
